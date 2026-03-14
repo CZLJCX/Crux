@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.4-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.5-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -47,29 +47,16 @@
 
 ### 安装步骤
 
-#### 方式一：一条命令完成（推荐）
-
-在任意目录打开终端，运行：
-
-```bash
-npm install -g crux; crux-init
-```
-
-> ℹ️ 如果当前目录没有项目，会自动切换到用户目录 `~/Crux`
-
-#### 方式二：分步安装
-
 ```bash
 # 1. 克隆项目
 git clone https://github.com/CZLJCX/Crux.git
 cd Crux
 
-# 2. 初始化
+# 2. 安装依赖并初始化
 npm run init
 
-# 或者全局安装后使用命令
-npm install -g crux
-crux-init
+# 3. 全局安装（可选）
+npm install -g
 ```
 
 #### 安装过程中
