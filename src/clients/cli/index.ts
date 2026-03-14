@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
-import ora from 'ora';
 import inquirer from 'inquirer';
 import { marked } from 'marked';
 import { spawn } from 'child_process';
@@ -246,17 +245,24 @@ class CLI {
     console.log();
   }
 
-  private printContent(content: string, label: string = 'Assistant') {
+  private printContent(content: string, label: string = 'Assistant', isStreaming: boolean = false) {
     if (!content) return;
     
     const plainText = this.stripMarkdown(content);
     
-    console.log();
-    console.log(chalk.cyan('  ╭─────────────────────────────────'));
-    console.log(chalk.cyan('  │ ') + chalk.white.bold(`${label}:`));
-    console.log(chalk.cyan('  ╰─────────────────────────────────'));
-    console.log(chalk.white('  ' + plainText.trim().split('\n').join('\n  ')));
-    console.log();
+    if (!isStreaming) {
+      console.log();
+      console.log(chalk.cyan('  ╭─────────────────────────────────'));
+      console.log(chalk.cyan('  │ ') + chalk.white.bold(`${label}:`));
+      console.log(chalk.cyan('  ╰─────────────────────────────────'));
+    }
+    const lines = plainText.trim().split('\n');
+    for (const line of lines) {
+      process.stdout.write(chalk.white(line + (isStreaming ? '' : '\n')));
+    }
+    if (!isStreaming) {
+      console.log();
+    }
   }
 
   private printToolCall(toolName: string, isStart: boolean = true) {
@@ -297,12 +303,12 @@ Always provide clear explanations before taking actions. When you need to use to
       }))
     ];
 
-    const spinner = ora({ text: chalk.cyan('  Thinking...'), spinner: 'dots' }).start();
-    let fullResponse = '';
+    console.log();
+    let fullContent = '';
     let fullReasoning = '';
+    let isFirstChunk = true;
 
     if (!this.agent) {
-      spinner.stop();
       console.log(chalk.red('\n  ╭─────────────────────────────────'));
       console.log(chalk.red('  │ ') + chalk.red('Agent not initialized'));
       console.log(chalk.red('  ╰─────────────────────────────────\n'));
@@ -314,30 +320,35 @@ Always provide clear explanations before taking actions. When you need to use to
         messages,
         (chunk, isTool) => {
           if (isTool) {
-            fullResponse += '\n' + chunk;
+            fullContent += '\n' + chunk;
           } else {
-            fullResponse += chunk;
+            fullContent += chunk;
+            process.stdout.write(chalk.white(chunk));
           }
         },
         (reasoningChunk) => {
+          if (isFirstChunk) {
+            console.log();
+            console.log(chalk.cyan('  ╭─────────────────────────────────'));
+            console.log(chalk.cyan('  │ ') + chalk.yellow('🤔 Thinking'));
+            console.log(chalk.cyan('  ╰─────────────────────────────────'));
+            isFirstChunk = false;
+          }
           fullReasoning += reasoningChunk;
+          process.stdout.write(chalk.gray(this.stripMarkdown(reasoningChunk)));
         }
       );
 
-      spinner.stop();
+      console.log();
 
-      if (fullReasoning) {
-        this.printReasoning(fullReasoning);
-      }
-
-      const rawContent = content || fullResponse;
+      const rawContent = content || fullContent;
       if (rawContent) {
-        this.printContent(rawContent);
+        console.log();
       }
 
       const assistantMessage: Message = { 
         role: 'assistant', 
-        content: content || fullResponse,
+        content: content || fullContent,
         reasoning: fullReasoning || reasoning,
         tool_calls: toolCalls,
       };
@@ -354,7 +365,6 @@ Always provide clear explanations before taking actions. When you need to use to
         }
       }
     } catch (error: any) {
-      spinner.stop();
       console.log(chalk.red('\n  ╭─────────────────────────────────'));
       console.log(chalk.red('  │ ') + chalk.red('Error: ') + chalk.white(error.message));
       console.log(chalk.red('  ╰─────────────────────────────────\n'));

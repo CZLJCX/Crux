@@ -90,6 +90,64 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/chat/stream', async (req: Request, res: Response) => {
+  const { messages, sessionId } = req.body as { messages: Message[]; sessionId?: string };
+  
+  if (!messages || !Array.isArray(messages)) {
+    res.status(400).json({ error: 'Invalid messages' });
+    return;
+  }
+
+  const config = configManager.get();
+  if (!config.api.apiKey) {
+    res.status(400).json({ error: 'API key not configured' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const agent = new Agent();
+  agent.setApiKey(config.api.apiKey);
+  agent.setModel(config.api.model);
+
+  let fullContent = '';
+  let fullReasoning = '';
+
+  try {
+    for await (const chunk of agent.streamChatIter(messages)) {
+      if (chunk.type === 'content') {
+        fullContent += chunk.data;
+        res.write(`data: ${JSON.stringify({ type: 'content', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'reasoning') {
+        fullReasoning += chunk.data;
+        res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'tool_call') {
+        res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'tool_result') {
+        res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'done') {
+        res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
+      }
+    }
+
+    if (sessionId) {
+      for (const msg of messages) {
+        sessionManager.addMessage(sessionId, msg);
+      }
+      if (fullContent) {
+        sessionManager.addMessage(sessionId, { role: 'assistant', content: fullContent, reasoning: fullReasoning });
+      }
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.write(`data: ${JSON.stringify({ type: 'error', data: message })}\n\n`);
+  }
+
+  res.end();
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

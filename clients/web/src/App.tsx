@@ -4,7 +4,6 @@ interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   reasoning?: string;
-  tool_call_id?: string;
 }
 
 interface Session {
@@ -30,6 +29,8 @@ function App() {
   const [baseURL, setBaseURL] = useState('https://api.deepseek.com/v1');
   const [model, setModel] = useState('deepseek-chat');
   const [temperature, setTemperature] = useState('0.7');
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -38,7 +39,7 @@ function App() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, streamingContent, scrollToBottom]);
 
   useEffect(() => {
     loadSessions();
@@ -73,6 +74,8 @@ function App() {
 
   async function selectSession(id: string) {
     setCurrentSessionId(id);
+    setStreamingContent('');
+    setStreamingReasoning('');
     try {
       const res = await fetch(`${API_BASE}/sessions/${id}`);
       const data = await res.json();
@@ -137,9 +140,11 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+    setStreamingContent('');
+    setStreamingReasoning('');
 
     try {
-      const res = await fetch(`${API_BASE}/chat`, {
+      const res = await fetch(`${API_BASE}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -148,15 +153,48 @@ function App() {
         }),
       });
 
-      const data = await res.json();
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
 
-      if (data.content) {
-        const assistantMessage: Message = { role: 'assistant', content: data.content };
-        setMessages(prev => [...prev, assistantMessage]);
+      if (!reader) {
+        throw new Error('No reader available');
       }
 
-      if (data.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `错误: ${data.error}` }]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'content') {
+                setStreamingContent(prev => prev + data.data);
+              } else if (data.type === 'reasoning') {
+                setStreamingReasoning(prev => prev + data.data);
+              } else if (data.type === 'done') {
+                if (streamingContent || streamingReasoning) {
+                  const assistantMessage: Message = { 
+                    role: 'assistant', 
+                    content: streamingContent,
+                    reasoning: streamingReasoning 
+                  };
+                  setMessages(prev => [...prev, assistantMessage]);
+                }
+                setStreamingContent('');
+                setStreamingReasoning('');
+              } else if (data.type === 'error') {
+                setMessages(prev => [...prev, { role: 'assistant', content: `错误: ${data.data}` }]);
+              }
+            } catch (e) {
+              console.error('Parse error:', e);
+            }
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to send message:', e);
@@ -209,26 +247,34 @@ function App() {
         </div>
 
         <div className="chat-messages">
-          {messages.length === 0 && (
+          {messages.length === 0 && !streamingContent && (
             <div className="welcome-message">我是 Crux，很高兴见到你！</div>
           )}
           
           {messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}>
-              <div className="message-avatar">
-                {msg.role === 'user' ? '👤' : '🤖'}
-              </div>
               <div className="message-content">
-                {msg.content}
+                {msg.reasoning && (
+                  <div className="reasoning-box">
+                    <div className="reasoning-label">🤔 思考</div>
+                    <div className="reasoning-content">{msg.reasoning}</div>
+                  </div>
+                )}
+                <div className="message-text">{msg.content}</div>
               </div>
             </div>
           ))}
           
-          {loading && (
+          {(streamingReasoning || streamingContent) && (
             <div className="message bot-message">
-              <div className="message-avatar">🤖</div>
               <div className="message-content">
-                <span className="loading-dots">思考中<span>.</span><span>.</span><span>.</span></span>
+                {streamingReasoning && (
+                  <div className="reasoning-box">
+                    <div className="reasoning-label">🤔 思考</div>
+                    <div className="reasoning-content">{streamingReasoning}</div>
+                  </div>
+                )}
+                <div className="message-text streaming">{streamingContent}<span className="cursor">▋</span></div>
               </div>
             </div>
           )}
