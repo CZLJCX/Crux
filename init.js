@@ -72,9 +72,13 @@ async function updateEnvFile(apiKey, baseUrl, model, temperature) {
   success('已更新 .env 配置');
 }
 
-async function runCommand(command, args, description) {
+async function runCommand(command, args, description, cwd = null) {
   log(`执行: ${description}...`);
-  const result = spawnSync(command, args, { shell: true, stdio: 'inherit' });
+  const options = { shell: true, stdio: 'inherit' };
+  if (cwd) {
+    options.cwd = cwd;
+  }
+  const result = spawnSync(command, args, options);
   if (result.status !== 0) {
     error(`${description} 失败`);
     process.exit(1);
@@ -124,6 +128,16 @@ async function main() {
   log('开始全局安装...\n');
 
   await runCommand('npm', ['install', '-g'], '全局安装');
+
+  console.log('\n' + '='.repeat(40));
+  log('开始安装 GUI 依赖...\n');
+
+  await runCommand('npm', ['install'], '安装 GUI 依赖', 'src/clients/gui');
+
+  console.log('\n' + '='.repeat(40));
+  log('开始安装 Web 依赖...\n');
+
+  await runCommand('npm', ['install'], '安装 Web 依赖', 'clients/web');
 
   console.log('\n' + '='.repeat(40));
   console.log('\n\x1b[32m初始化完成！\x1b[0m\n');

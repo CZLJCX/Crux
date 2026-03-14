@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.1-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -51,7 +51,7 @@
 
 ```bash
 git clone https://github.com/CZLJCX/Crux.git
-cd crux
+cd Crux
 ```
 
 #### 2. 初始化
@@ -67,7 +67,14 @@ node init.js
 #### 3. 启动程序
 
 ```bash
+# CLI 客户端
 crux
+
+# GUI 客户端
+crux-gui
+
+# Web 客户端
+crux-web
 ```
 
 ---
@@ -80,6 +87,11 @@ crux
 | `npm run build` | 编译 TypeScript 项目 |
 | `npm run cli` | 运行 CLI 客户端 |
 | `npm run dev` | 开发模式运行 |
+| `npm run install-gui` | 安装 GUI 客户端依赖 |
+| `npm run install-web` | 安装 Web 客户端依赖 |
+| `crux` | 启动 CLI 客户端（全局命令） |
+| `crux-gui` | 启动 GUI 客户端（全局命令） |
+| `crux-web` | 启动 Web 客户端（全局命令） |
 
 ### CLI 客户端（推荐）
 
@@ -108,9 +120,16 @@ crux
 桌面应用程序，基于 Tauri 框架。
 
 ```bash
-cd src/clients/gui
-npm install
-npm run tauri dev
+# 全局命令（推荐）
+crux-gui
+
+# 或使用 npm
+npm run gui
+```
+
+**首次使用需安装依赖：**
+```bash
+npm run install-gui
 ```
 
 **前置要求：**
@@ -129,9 +148,16 @@ npm run tauri dev
 网页版应用，基于 React + Vite。
 
 ```bash
-cd clients/web
-npm install
-npm run dev
+# 全局命令（推荐）
+crux-web
+
+# 或使用 npm
+npm run web
+```
+
+**首次使用需安装依赖：**
+```bash
+npm run install-web
 ```
 
 访问 `http://localhost:5173` 即可使用。
@@ -205,14 +231,18 @@ crux/
 │   │   └── WebFetchTool.ts   # 网页工具
 │   ├── clients/              # 客户端
 │   │   ├── cli/              # CLI 客户端
-│   │   └── gui/              # GUI 客户端
+│   │   └── gui/              # GUI 客户端（Tauri）
+│   ├── utils/                # 工具函数
+│   │   ├── environment.ts    # 环境检测
+│   │   └── updater.ts        # 升级检测
 │   └── server.ts             # Web 服务器
 ├── clients/
-│   └── web/                  # Web 客户端
+│   └── web/                  # Web 客户端（React）
 ├── dist/                     # 编译输出
 ├── .env.example              # 配置模板
 ├── package.json              # 项目配置
 ├── tsconfig.json            # TypeScript 配置
+├── init.js                   # 初始化脚本
 └── README.md                # 说明文档
 ```
 
@@ -309,7 +339,7 @@ node dist/clients/cli/index.js
 
 **前置条件：**
 - 安装 Rust: https://rustup.rs
-- 安装 GUI 依赖: `cd src/clients/gui && npm install`
+- 安装 GUI 依赖: `npm run install-gui`
 
 ### Q4: 多轮工具调用失败
 
