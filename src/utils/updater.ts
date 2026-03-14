@@ -55,6 +55,7 @@ export class Updater {
       });
 
       if (!response.ok) {
+        console.log(chalk.yellow(`  Unable to check for updates (HTTP ${response.status})\n`));
         return { hasUpdate: false, latestVersion: this.currentVersion };
       }
 
@@ -66,7 +67,7 @@ export class Updater {
         latestVersion
       };
     } catch (error) {
-      console.log(chalk.yellow('  Unable to check for updates. Continuing...\n'));
+      console.log(chalk.yellow(`  Unable to check for updates: ${error}\n`));
       return { hasUpdate: false, latestVersion: this.currentVersion };
     }
   }
@@ -84,14 +85,16 @@ export class Updater {
     const { hasUpdate, latestVersion } = await this.checkForUpdate();
 
     if (!hasUpdate) {
-      console.log(chalk.green('  ✓ You are using the latest version!\n'));
+      if (latestVersion === this.currentVersion) {
+        console.log(chalk.green('  ✓ You are using the latest version!\n'));
+      }
       return;
     }
 
     console.log(chalk.yellow(`  New version available: ${latestVersion}\n`));
 
-    const currentEnvPath = join(process.cwd(), '.env');
-    const backupEnvPath = join(process.cwd(), '.env.backup');
+    const currentEnvPath = join(this.projectDir, '.env');
+    const backupEnvPath = join(this.projectDir, '.env.backup');
 
     if (existsSync(currentEnvPath)) {
       console.log(chalk.gray('  Backing up .env file...'));

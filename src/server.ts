@@ -16,12 +16,18 @@ app.get('/api/config', (req: Request, res: Response) => {
 });
 
 app.put('/api/config', (req: Request, res: Response) => {
-  const { apiKey, model } = req.body;
+  const { apiKey, model, baseURL, temperature } = req.body;
   if (apiKey) {
     configManager.updateAPI({ apiKey });
   }
   if (model) {
     configManager.updateAPI({ model });
+  }
+  if (baseURL) {
+    configManager.updateAPI({ baseURL });
+  }
+  if (temperature !== undefined) {
+    configManager.updateAPI({ temperature: parseFloat(temperature) });
   }
   res.json({ success: true });
 });
@@ -48,7 +54,7 @@ app.get('/api/sessions/:id', (req: Request, res: Response) => {
 });
 
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { messages } = req.body as { messages: Message[] };
+  const { messages, sessionId } = req.body as { messages: Message[]; sessionId?: string };
   
   if (!messages || !Array.isArray(messages)) {
     res.status(400).json({ error: 'Invalid messages' });
@@ -67,6 +73,16 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   try {
     const result = await agent.chat(messages);
+    
+    if (sessionId) {
+      for (const msg of messages) {
+        sessionManager.addMessage(sessionId, msg);
+      }
+      if (result.content) {
+        sessionManager.addMessage(sessionId, { role: 'assistant', content: result.content });
+      }
+    }
+    
     res.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
