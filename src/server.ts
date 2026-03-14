@@ -116,7 +116,7 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Connection', 'close');
   res.flushHeaders();
 
   const agent = new Agent();

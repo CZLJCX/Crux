@@ -180,37 +180,63 @@ Always provide clear explanations before taking actions. When you need to use to
     messages: Message[]
   ): AsyncGenerator<{ type: 'content' | 'reasoning' | 'tool_call' | 'tool_result' | 'done'; data: string }> {
     const tools = toolRegistry.getOpenAITools();
-    let toolCallBuffer = '';
-    let pendingReasoning = '';
+    let currentMessages = [...messages];
+    let loopCount = 0;
+    const maxLoops = 10;
 
-    for await (const chunk of this.llm.streamChatWithTools(messages, tools, (tc) => {
-      toolCallBuffer = JSON.stringify(tc);
-    }, (reasoning) => {
-      pendingReasoning += reasoning;
-    })) {
+    while (loopCount < maxLoops) {
+      loopCount++;
+      let toolCallBuffer = '';
+      let pendingReasoning = '';
+      let hasContent = false;
+
+      for await (const chunk of this.llm.streamChatWithTools(currentMessages, tools, (tc) => {
+        toolCallBuffer = JSON.stringify(tc);
+      }, (reasoning) => {
+        pendingReasoning += reasoning;
+      })) {
+        if (pendingReasoning) {
+          yield { type: 'reasoning', data: pendingReasoning };
+          pendingReasoning = '';
+        }
+        if (chunk) {
+          hasContent = true;
+          yield { type: 'content', data: chunk };
+        }
+      }
+
       if (pendingReasoning) {
         yield { type: 'reasoning', data: pendingReasoning };
-        pendingReasoning = '';
       }
-      yield { type: 'content', data: chunk };
-    }
 
-    if (pendingReasoning) {
-      yield { type: 'reasoning', data: pendingReasoning };
-      pendingReasoning = '';
-    }
-
-    if (toolCallBuffer) {
-      yield { type: 'tool_call', data: toolCallBuffer };
-      
-      const tc = JSON.parse(toolCallBuffer);
-      const args = JSON.parse(tc.function.arguments);
-      
-      try {
-        const result = await toolRegistry.execute(tc.function.name, args);
+      if (toolCallBuffer) {
+        yield { type: 'tool_call', data: toolCallBuffer };
+        
+        const tc = JSON.parse(toolCallBuffer);
+        const args = JSON.parse(tc.function.arguments);
+        
+        let result: string;
+        try {
+          result = await toolRegistry.execute(tc.function.name, args);
+        } catch (error: any) {
+          result = JSON.stringify({ error: error.message });
+        }
         yield { type: 'tool_result', data: result };
-      } catch (error: any) {
-        yield { type: 'tool_result', data: JSON.stringify({ error: error.message }) };
+
+        const toolMessage: Message = {
+          role: 'tool',
+          content: result,
+          tool_call_id: tc.id,
+        };
+        
+        currentMessages = [
+          ...currentMessages,
+          { role: 'assistant', content: '', tool_calls: [tc] } as Message,
+          toolMessage
+        ];
+      } else {
+        yield { type: 'done', data: '' };
+        return;
       }
     }
 

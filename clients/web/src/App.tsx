@@ -158,6 +158,10 @@ function App() {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
 

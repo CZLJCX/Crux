@@ -23,11 +23,13 @@ if (subCommand === 'web') {
 
 if (args.includes('-u') || args.includes('--update')) {
   const updater = new Updater();
-  updater.update().catch(console.error);
-  process.exit(0);
-}
-
-if (subCommand === '-h' || subCommand === '--help' || subCommand === 'help') {
+  updater.update().then(() => {
+    process.exit(0);
+  }).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+} else if (subCommand === '-h' || subCommand === '--help' || subCommand === 'help') {
   console.log(`
 ${chalk.cyan('  ╭─────────────────────────────────')}
 ${chalk.cyan('  │')} ${chalk.white.bold('Usage:')}
