@@ -6,7 +6,7 @@
 
 body {
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  background: linear-gradient(135deg, #f5fdfc 0%, #e8f4f8 100%);
+  background: #fefefe;
   min-height: 100vh;
   transition: background 0.3s ease;
   color: #333;
@@ -21,7 +21,7 @@ body {
 /* 侧边栏 */
 .sidebar {
   width: 280px;
-  background: linear-gradient(to bottom, #fff, #f8fbfa);
+  background: #f5fdfc;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -37,16 +37,8 @@ body {
 .app-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 5px;
-}
-
-.app-title span {
-  font-size: 24px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .app-icon {
@@ -54,6 +46,10 @@ body {
   height: 36px;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+}
+
+.app-title-text {
+  height: 28px;
 }
 
 .app-subtitle {
@@ -65,7 +61,7 @@ body {
 .new-chat-btn {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.15), rgba(79, 172, 254, 0.1));
+  background: rgba(79, 172, 254, 0.15);
   color: #4a8cbe;
   border: 1px dashed rgba(79, 172, 254, 0.4);
   border-radius: 12px;
@@ -76,7 +72,7 @@ body {
 }
 
 .new-chat-btn:hover {
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.25), rgba(79, 172, 254, 0.15));
+  background: rgba(79, 172, 254, 0.25);
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(79, 172, 254, 0.2);
 }
@@ -89,9 +85,9 @@ body {
 }
 
 .conversation-item {
-  padding: 12px 15px;
+  padding: 8px 15px;
   border-radius: 10px;
-  margin: 6px 0;
+  margin: 4px 0;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -100,6 +96,7 @@ body {
   background: transparent;
   color: #2c3e50;
   position: relative;
+  height: 38px;
 }
 
 .conversation-item:hover {
@@ -107,7 +104,7 @@ body {
 }
 
 .conversation-item.active {
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.2), rgba(79, 172, 254, 0.1));
+  background: rgba(79, 172, 254, 0.2);
   border: 1px solid rgba(79, 172, 254, 0.3);
 }
 
@@ -118,7 +115,7 @@ body {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(to bottom, #4facfe, #00f2fe);
+  background: #4facfe;
   border-radius: 0 4px 4px 0;
 }
 
@@ -392,7 +389,7 @@ body {
   bottom: 28px;
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  background: #4a8cbe;
   color: white;
   border: none;
   border-radius: 50%;
@@ -445,9 +442,7 @@ body {
 .modal h2 {
   font-size: 20px;
   margin-bottom: 24px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #4a8cbe;
 }
 
 .form-group {
@@ -503,7 +498,7 @@ body {
 
 .save-btn {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  background: #4a8cbe;
   border: none;
   border-radius: 10px;
   color: white;
@@ -521,12 +516,12 @@ body {
 
 /* 深色主题 */
 .dark-theme {
-  background: linear-gradient(135deg, #1a1f24 0%, #0f1317 100%);
+  background: #1a1f24;
   color: #e0e0e0;
 }
 
 .dark-theme .sidebar {
-  background: linear-gradient(to bottom, #1a1f24, #0f1317);
+  background: #1a1f24;
   border-right: 1px solid #2a3038;
 }
 
@@ -539,7 +534,7 @@ body {
 }
 
 .dark-theme .new-chat-btn {
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.2), rgba(79, 172, 254, 0.1));
+  background: rgba(79, 172, 254, 0.2);
   color: #8ac4ff;
   border-color: rgba(79, 172, 254, 0.3);
 }
@@ -553,7 +548,7 @@ body {
 }
 
 .dark-theme .conversation-item.active {
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.25), rgba(79, 172, 254, 0.15));
+  background: rgba(79, 172, 254, 0.25);
   border-color: rgba(79, 172, 254, 0.4);
 }
 
@@ -647,9 +642,7 @@ body {
 }
 
 .dark-theme .modal h2 {
-  background: linear-gradient(135deg, #8ac4ff, #60d0ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #8ac4ff;
 }
 
 .dark-theme .form-group label {

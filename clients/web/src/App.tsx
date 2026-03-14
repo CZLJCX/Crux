@@ -143,6 +143,9 @@ function App() {
     setStreamingContent('');
     setStreamingReasoning('');
 
+    let finalContent = '';
+    let finalReasoning = '';
+
     try {
       const res = await fetch(`${API_BASE}/chat/stream`, {
         method: 'POST',
@@ -173,15 +176,17 @@ function App() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'content') {
-                setStreamingContent(prev => prev + data.data);
+                finalContent += data.data;
+                setStreamingContent(finalContent);
               } else if (data.type === 'reasoning') {
-                setStreamingReasoning(prev => prev + data.data);
+                finalReasoning += data.data;
+                setStreamingReasoning(finalReasoning);
               } else if (data.type === 'done') {
-                if (streamingContent || streamingReasoning) {
+                if (finalContent || finalReasoning) {
                   const assistantMessage: Message = { 
                     role: 'assistant', 
-                    content: streamingContent,
-                    reasoning: streamingReasoning 
+                    content: finalContent,
+                    reasoning: finalReasoning 
                   };
                   setMessages(prev => [...prev, assistantMessage]);
                 }
@@ -210,7 +215,7 @@ function App() {
         <div className="sidebar-header">
           <div className="app-title">
             <img src="https://cruxai.cn/icon/i.png" alt="Crux" className="app-icon" />
-            <span>Crux</span>
+            <img src="https://cruxai.cn/icon/Chat.png" alt="Crux" className="app-title-text" />
           </div>
           <div className="app-subtitle">by CZLJ</div>
           <button className="new-chat-btn" onClick={createSession}>+ 新建对话</button>

@@ -53,6 +53,16 @@ app.get('/api/sessions/:id', (req: Request, res: Response) => {
   res.json({ id: session.id, name: session.name, messages: session.messages });
 });
 
+app.delete('/api/sessions/:id', (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  try {
+    sessionManager.delete(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete session' });
+  }
+});
+
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { messages, sessionId } = req.body as { messages: Message[]; sessionId?: string };
   
