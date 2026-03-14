@@ -165,11 +165,11 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
     // Generate session title from first user message
     if (sessionId && messages.length > 0) {
       const session = sessionManager.load(sessionId);
-      if (session && session.messages.length <= 2) {
-        const firstUserMessage = messages.find(m => m.role === 'user');
-        if (firstUserMessage && (session.name.startsWith('新对话') || session.name.startsWith('Session'))) {
-          generateSessionTitle(agent, sessionId, firstUserMessage.content).catch(console.error);
-        }
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      if (firstUserMessage && session && 
+          (session.name.startsWith('新对话') || session.name.startsWith('Session'))) {
+        // Don't wait for title generation
+        generateSessionTitle(agent, sessionId, firstUserMessage.content).catch(console.error);
       }
     }
   } catch (error: unknown) {
