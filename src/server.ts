@@ -114,6 +114,12 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
     return;
   }
 
+  if (sessionId) {
+    for (const msg of messages) {
+      sessionManager.addMessage(sessionId, msg);
+    }
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'close');
@@ -137,6 +143,15 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
         fullReasoning += chunk.data;
         res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
       } else if (chunk.type === 'response_end') {
+        if (sessionId && (fullContent || fullReasoning)) {
+          sessionManager.addMessage(sessionId, { 
+            role: 'assistant', 
+            content: fullContent, 
+            reasoning: fullReasoning 
+          });
+        }
+        fullContent = '';
+        fullReasoning = '';
         res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
       } else if (chunk.type === 'tool_call') {
         res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
@@ -144,15 +159,6 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
         res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
       } else if (chunk.type === 'done') {
         res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
-      }
-    }
-
-    if (sessionId) {
-      for (const msg of messages) {
-        sessionManager.addMessage(sessionId, msg);
-      }
-      if (fullContent) {
-        sessionManager.addMessage(sessionId, { role: 'assistant', content: fullContent, reasoning: fullReasoning });
       }
     }
   } catch (error: unknown) {
