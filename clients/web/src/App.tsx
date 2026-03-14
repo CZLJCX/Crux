@@ -137,6 +137,8 @@ function App() {
     if (!input.trim() || loading || !currentSessionId) return;
 
     const userMessage: Message = { role: 'user', content: input };
+    const currentMessages = [...messages, userMessage];
+    
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
@@ -151,7 +153,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          messages: [...messages, userMessage],
+          messages: currentMessages,
           sessionId: currentSessionId 
         }),
       });

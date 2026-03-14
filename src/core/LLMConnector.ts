@@ -195,4 +195,12 @@ export class LLMConnector {
   setModel(model: string): void {
     this.config.model = model;
   }
+
+  setBaseURL(baseURL: string): void {
+    this.config.baseURL = baseURL;
+  }
+
+  setTemperature(temperature: number): void {
+    this.config.temperature = temperature;
+  }
 }

@@ -181,18 +181,23 @@ Always provide clear explanations before taking actions. When you need to use to
   ): AsyncGenerator<{ type: 'content' | 'reasoning' | 'tool_call' | 'tool_result' | 'done'; data: string }> {
     const tools = toolRegistry.getOpenAITools();
     let toolCallBuffer = '';
-    let reasoningBuffer = '';
+    let pendingReasoning = '';
 
     for await (const chunk of this.llm.streamChatWithTools(messages, tools, (tc) => {
       toolCallBuffer = JSON.stringify(tc);
     }, (reasoning) => {
-      reasoningBuffer += reasoning;
+      pendingReasoning += reasoning;
     })) {
+      if (pendingReasoning) {
+        yield { type: 'reasoning', data: pendingReasoning };
+        pendingReasoning = '';
+      }
       yield { type: 'content', data: chunk };
     }
 
-    if (reasoningBuffer) {
-      yield { type: 'reasoning', data: reasoningBuffer };
+    if (pendingReasoning) {
+      yield { type: 'reasoning', data: pendingReasoning };
+      pendingReasoning = '';
     }
 
     if (toolCallBuffer) {
@@ -218,6 +223,14 @@ Always provide clear explanations before taking actions. When you need to use to
 
   setModel(model: string): void {
     this.llm.setModel(model);
+  }
+
+  setBaseURL(baseURL: string): void {
+    this.llm.setBaseURL(baseURL);
+  }
+
+  setTemperature(temperature: number): void {
+    this.llm.setTemperature(temperature);
   }
 
   listTools(): string[] {

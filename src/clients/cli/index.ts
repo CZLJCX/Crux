@@ -61,6 +61,14 @@ class CLI {
     }
 
     this.agent = new Agent();
+    this.agent.setApiKey(configManager.get().api.apiKey);
+    this.agent.setModel(configManager.get().api.model);
+    if (configManager.get().api.baseURL) {
+      this.agent.setBaseURL(configManager.get().api.baseURL);
+    }
+    if (configManager.get().api.temperature !== undefined) {
+      this.agent.setTemperature(configManager.get().api.temperature);
+    }
 
     await this.mainLoop();
   }
@@ -335,9 +343,17 @@ Always provide clear explanations before taking actions. When you need to use to
             isFirstChunk = false;
           }
           fullReasoning += reasoningChunk;
-          process.stdout.write(chalk.gray(this.stripMarkdown(reasoningChunk)));
         }
       );
+
+      if (fullReasoning) {
+        const lines = fullReasoning.trim().split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            process.stdout.write(chalk.gray('  ' + this.stripMarkdown(line) + '\n'));
+          }
+        }
+      }
 
       console.log();
 

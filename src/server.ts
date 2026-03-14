@@ -117,10 +117,13 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
 
   const agent = new Agent();
   agent.setApiKey(config.api.apiKey);
   agent.setModel(config.api.model);
+  agent.setBaseURL(config.api.baseURL);
+  agent.setTemperature(config.api.temperature);
 
   let fullContent = '';
   let fullReasoning = '';
