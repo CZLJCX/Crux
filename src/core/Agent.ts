@@ -178,7 +178,7 @@ Always provide clear explanations before taking actions. When you need to use to
 
   async *streamChatIter(
     messages: Message[]
-  ): AsyncGenerator<{ type: 'content' | 'reasoning' | 'tool_call' | 'tool_result' | 'done'; data: string }> {
+  ): AsyncGenerator<{ type: 'content' | 'reasoning' | 'tool_call' | 'tool_result' | 'response_end' | 'done'; data: string }> {
     const tools = toolRegistry.getOpenAITools();
     let currentMessages = [...messages];
     let loopCount = 0;
@@ -210,6 +210,7 @@ Always provide clear explanations before taking actions. When you need to use to
       }
 
       if (toolCallBuffer) {
+        yield { type: 'response_end', data: '' };
         yield { type: 'tool_call', data: toolCallBuffer };
         
         const tc = JSON.parse(toolCallBuffer);
@@ -235,11 +236,13 @@ Always provide clear explanations before taking actions. When you need to use to
           toolMessage
         ];
       } else {
+        yield { type: 'response_end', data: '' };
         yield { type: 'done', data: '' };
         return;
       }
     }
 
+    yield { type: 'response_end', data: '' };
     yield { type: 'done', data: '' };
   }
 

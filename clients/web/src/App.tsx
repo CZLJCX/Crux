@@ -4,6 +4,14 @@ interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   reasoning?: string;
+  files?: FileAttachment[];
+}
+
+interface FileAttachment {
+  name: string;
+  type: string;
+  content: string;
+  size: number;
 }
 
 interface Session {
@@ -31,7 +39,9 @@ function App() {
   const [temperature, setTemperature] = useState('0.7');
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,14 +143,45 @@ function App() {
     }
   }
 
-  async function sendMessage() {
-    if (!input.trim() || loading || !currentSessionId) return;
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        const attachment: FileAttachment = {
+          name: file.name,
+          type: file.type,
+          content: content,
+          size: file.size,
+        };
+        setAttachments(prev => [...prev, attachment]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
+
+  async function sendMessage() {
+    if ((!input.trim() && attachments.length === 0) || loading || !currentSessionId) return;
+
+    const userMessage: Message = { 
+      role: 'user', 
+      content: input,
+      files: attachments.length > 0 ? attachments : undefined
+    };
     const currentMessages = [...messages, userMessage];
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setAttachments([]);
     setLoading(true);
     setStreamingContent('');
     setStreamingReasoning('');
@@ -187,6 +228,19 @@ function App() {
               } else if (data.type === 'reasoning') {
                 finalReasoning += data.data;
                 setStreamingReasoning(finalReasoning);
+              } else if (data.type === 'response_end') {
+                if (finalContent || finalReasoning) {
+                  const assistantMessage: Message = { 
+                    role: 'assistant', 
+                    content: finalContent,
+                    reasoning: finalReasoning 
+                  };
+                  setMessages(prev => [...prev, assistantMessage]);
+                }
+                finalContent = '';
+                finalReasoning = '';
+                setStreamingContent('');
+                setStreamingReasoning('');
               } else if (data.type === 'done') {
                 if (finalContent || finalReasoning) {
                   const assistantMessage: Message = { 
@@ -265,6 +319,16 @@ function App() {
           {messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role === 'user' ? 'user-message' : 'bot-message'}`}>
               <div className="message-content">
+                {msg.files && msg.files.length > 0 && (
+                  <div className="message-files">
+                    {msg.files.map((file, j) => (
+                      <div key={j} className="message-file">
+                        <span className="file-icon">📄</span>
+                        <span className="file-name">{file.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {msg.reasoning && (
                   <div className="reasoning-box">
                     <div className="reasoning-label">🤔 思考</div>
@@ -294,6 +358,16 @@ function App() {
         </div>
 
         <div className="input-container">
+          {attachments.length > 0 && (
+            <div className="attachments-preview">
+              {attachments.map((file, i) => (
+                <div key={i} className="attachment-item">
+                  <span className="attachment-name">{file.name}</span>
+                  <button className="attachment-remove" onClick={() => removeAttachment(i)}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
           <textarea
             className="user-input"
             value={input}
@@ -307,9 +381,30 @@ function App() {
             placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
             disabled={loading}
           />
-          <button className="send-button" onClick={sendMessage} disabled={loading || !input.trim()}>
-            ➜
-          </button>
+          <div className="input-buttons">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="attach-button" 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              title="添加附件"
+            >
+              📎
+            </button>
+            <button 
+              className="send-button" 
+              onClick={sendMessage} 
+              disabled={loading || (!input.trim() && attachments.length === 0)}
+            >
+              ➜
+            </button>
+          </div>
         </div>
       </main>
 

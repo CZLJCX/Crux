@@ -136,6 +136,8 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
       } else if (chunk.type === 'reasoning') {
         fullReasoning += chunk.data;
         res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'response_end') {
+        res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
       } else if (chunk.type === 'tool_call') {
         res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
       } else if (chunk.type === 'tool_result') {

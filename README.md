@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.13-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.14-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">

@@ -384,9 +384,6 @@ body {
 }
 
 .send-button {
-  position: absolute;
-  right: 40px;
-  bottom: 28px;
   width: 42px;
   height: 42px;
   background: #4a8cbe;
@@ -410,6 +407,110 @@ body {
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.input-buttons {
+  position: absolute;
+  right: 20px;
+  bottom: 28px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.attach-button {
+  width: 38px;
+  height: 38px;
+  background: rgba(79, 172, 254, 0.15);
+  color: #4a8cbe;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.attach-button:hover:not(:disabled) {
+  background: rgba(79, 172, 254, 0.25);
+}
+
+.attach-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attachments-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 20px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(79, 172, 254, 0.1);
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.attachment-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-remove {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+}
+
+.attachment-remove:hover {
+  color: #ff4444;
+}
+
+.message-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.message-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.dark-theme .message-file {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.file-icon {
+  font-size: 14px;
+}
+
+.file-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 模态框 */
