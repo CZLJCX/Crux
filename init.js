@@ -53,6 +53,27 @@ function getUserDirCrux() {
   return join(homedir(), 'Crux');
 }
 
+function ensureProjectDir() {
+  const cwd = process.cwd();
+  const userDir = getUserDirCrux();
+  
+  if (existsSync(join(cwd, 'package.json'))) {
+    return;
+  }
+  
+  if (existsSync(join(userDir, 'package.json'))) {
+    chdir(userDir);
+    console.log(`已切换到项目目录: ${userDir}\n`);
+    return;
+  }
+  
+  console.log(`\n未找到 Crux 项目，请先克隆项目:\n`);
+  console.log(`  git clone https://github.com/CZLJCX/Crux.git`);
+  console.log(`  cd Crux`);
+  console.log(`  npm run init\n`);
+  process.exit(1);
+}
+
 async function moveToUserDir() {
   const userDir = getUserDirCrux();
   const userHome = homedir();
@@ -142,9 +163,7 @@ async function runCommand(command, args, description, cwd = null) {
 }
 
 async function main() {
-  if (shouldMoveToUserDir()) {
-    await moveToUserDir();
-  }
+  ensureProjectDir();
 
   console.log('\n\x1b[1;35mCrux 初始化向导\x1b[0m\n');
   console.log('='.repeat(40));

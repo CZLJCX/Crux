@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.3-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.4-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -52,23 +52,24 @@
 在任意目录打开终端，运行：
 
 ```bash
-npm install -g crux && crux-init
+npm install -g crux; crux-init
 ```
 
-> ℹ️ `crux-init` 会自动检测当前目录，如果不在用户目录会自动克隆过去并安装。
+> ℹ️ 如果当前目录没有项目，会自动切换到用户目录 `~/Crux`
 
 #### 方式二：分步安装
 
 ```bash
-# 1. 克隆项目（会自动安装到用户目录）
+# 1. 克隆项目
 git clone https://github.com/CZLJCX/Crux.git
 cd Crux
 
-# 2. 初始化（会自动检测并移动到用户目录）
+# 2. 初始化
 npm run init
 
-# 或者使用 npx
-npx crux-init
+# 或者全局安装后使用命令
+npm install -g crux
+crux-init
 ```
 
 #### 安装过程中
