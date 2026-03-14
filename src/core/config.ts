@@ -1,14 +1,18 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { AppConfig, APIConfig } from './types.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function findEnvFile(): string | null {
   const candidates = [
     join(process.cwd(), '.env'),
     join(homedir(), '.crux', '.env'),
-    join(dirname(require.main?.filename || ''), '../../.env').replace(/\\/g, '/').split('/').filter(Boolean).join('/'),
+    join(__dirname, '../../.env'),
   ];
   
   for (const p of candidates) {

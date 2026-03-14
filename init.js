@@ -31,6 +31,12 @@ function info(message) {
 
 function shouldMoveToUserDir() {
   const cwd = process.cwd();
+  const userHome = homedir();
+  
+  if (cwd.startsWith(userHome)) {
+    return false;
+  }
+  
   const protectedPaths = [
     'C:\\Windows',
     'C:\\Program Files',
@@ -39,6 +45,7 @@ function shouldMoveToUserDir() {
     '/opt',
     '/System',
   ];
+  
   return protectedPaths.some(p => cwd.startsWith(p));
 }
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.2-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.3-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -47,19 +47,69 @@
 
 ### 安装步骤
 
-#### 1. 运行初始化
+#### 方式一：一条命令完成（推荐）
+
+在任意目录打开终端，运行：
 
 ```bash
-npm run init
-# 或
-npx crux-init
-# 或
-node init.js
+npm install -g crux && crux-init
 ```
 
-> ℹ️ 如果当前目录是系统保护目录（如 `C:\Windows`），会自动克隆到用户目录 `~/Crux` 并切换过去。
+> ℹ️ `crux-init` 会自动检测当前目录，如果不在用户目录会自动克隆过去并安装。
 
-根据提示完成配置后，自动完成依赖安装、编译和全局安装。
+#### 方式二：分步安装
+
+```bash
+# 1. 克隆项目（会自动安装到用户目录）
+git clone https://github.com/CZLJCX/Crux.git
+cd Crux
+
+# 2. 初始化（会自动检测并移动到用户目录）
+npm run init
+
+# 或者使用 npx
+npx crux-init
+```
+
+#### 安装过程中
+
+初始化时会提示配置：
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| OPENAI_API_KEY | API 密钥（必填） | - |
+| OPENAI_BASE_URL | API 地址 | `https://api.openai.com/v1` |
+| OPENAI_MODEL | 使用的模型 | `gpt-4o` |
+| OPENAI_TEMPERATURE | 创造性参数 | `0.7` |
+
+#### 启动程序
+
+安装完成后，在任意目录运行：
+
+```bash
+crux       # CLI 客户端
+
+crux-gui   # GUI 客户端（需要先运行 npm run install-gui）
+
+crux-web   # Web 客户端
+```
+
+---
+
+#### ⚠️ 常见问题
+
+**Q: 安装失败提示权限错误？**
+
+确保不在系统保护目录（如 `C:\Windows`、`C:\Program Files`）。程序会自动检测并移动到用户目录。
+
+**Q: 如何使用其他 API？**
+
+修改 `.env` 文件：
+```
+OPENAI_API_KEY=your-key
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_MODEL=deepseek-chat
+```
 
 #### 2. 启动程序
 
