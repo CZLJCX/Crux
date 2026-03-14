@@ -7,21 +7,43 @@ import chalk from 'chalk';
 const REPO_URL = 'https://github.com/CZLJCX/Crux.git';
 const VERSION_URL = 'https://api.github.com/repos/CZLJCX/Crux/releases/latest';
 
-const CURRENT_VERSION = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8')).version;
-
 export class Updater {
   private projectDir: string;
+  private currentVersion: string;
 
   constructor() {
     this.projectDir = this.findProjectDir();
+    this.currentVersion = this.getCurrentVersion();
+  }
+
+  private getCurrentVersion(): string {
+    const pkgPath = join(this.projectDir, 'package.json');
+    if (existsSync(pkgPath)) {
+      try {
+        return JSON.parse(readFileSync(pkgPath, 'utf-8')).version;
+      } catch {
+        return '0.0.0';
+      }
+    }
+    return '0.0.0';
   }
 
   private findProjectDir(): string {
-    const globalPath = join(homedir(), '.npm-global', 'lib', 'node_modules', 'crux');
+    const globalPath = join(homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'crux');
     if (existsSync(globalPath)) {
-      return globalPath;
+      return join(homedir(), 'Crux');
     }
-    return process.cwd();
+    
+    const altGlobalPath = join(homedir(), '.npm-global', 'lib', 'node_modules', 'crux');
+    if (existsSync(altGlobalPath)) {
+      return join(dirname(altGlobalPath), '..', '..');
+    }
+    
+    if (existsSync(join(process.cwd(), 'package.json'))) {
+      return process.cwd();
+    }
+    
+    return join(homedir(), 'Crux');
   }
 
   async checkForUpdate(): Promise<{ hasUpdate: boolean; latestVersion: string }> {
@@ -33,19 +55,19 @@ export class Updater {
       });
 
       if (!response.ok) {
-        return { hasUpdate: false, latestVersion: CURRENT_VERSION };
+        return { hasUpdate: false, latestVersion: this.currentVersion };
       }
 
       const data = await response.json() as { tag_name?: string };
-      const latestVersion = data.tag_name?.replace('v', '') || CURRENT_VERSION;
+      const latestVersion = data.tag_name?.replace('v', '') || this.currentVersion;
 
       return {
-        hasUpdate: latestVersion !== CURRENT_VERSION,
+        hasUpdate: latestVersion !== this.currentVersion,
         latestVersion
       };
     } catch (error) {
       console.log(chalk.yellow('  Unable to check for updates. Continuing...\n'));
-      return { hasUpdate: false, latestVersion: CURRENT_VERSION };
+      return { hasUpdate: false, latestVersion: this.currentVersion };
     }
   }
 
@@ -56,7 +78,7 @@ export class Updater {
   ╰─────────────────────────────────
     `));
 
-    console.log(chalk.gray(`  Current version: ${CURRENT_VERSION}`));
+    console.log(chalk.gray(`  Current version: ${this.currentVersion}`));
     console.log(chalk.gray(`  Project directory: ${this.projectDir}\n`));
 
     const { hasUpdate, latestVersion } = await this.checkForUpdate();

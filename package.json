@@ -1,11 +1,10 @@
 {
   "name": "crux",
-  "version": "1.1.5",
-  "description": "AI Agent with CLI, GUI, and Web clients - Developed by CZLJ",
+  "version": "1.1.6",
+  "description": "AI Agent with CLI and Web clients - Developed by CZLJ",
   "main": "dist/core/index.js",
   "bin": {
     "crux": "./dist/clients/cli/index.js",
-    "crux-gui": "./dist/clients/cli/launch-gui.js",
     "crux-web": "./dist/clients/cli/launch-web.js"
   },
   "type": "module",
@@ -16,9 +15,7 @@
     "dev": "tsx src/core/index.ts",
     "cli": "tsx src/clients/cli/index.ts",
     "server": "tsx src/server.ts",
-    "gui": "cd src/clients/gui && npm run tauri dev",
     "web": "cd clients/web && npm run dev",
-    "install-gui": "cd src/clients/gui && npm install",
     "install-web": "cd clients/web && npm install",
     "typecheck": "tsc --noEmit"
   },

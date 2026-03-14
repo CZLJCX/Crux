@@ -8,34 +8,13 @@ import { Agent, sessionManager, configManager } from '../../core/index.js';
 import { registerBuiltInTools } from '../../tools/index.js';
 import { Message, SessionSummary } from '../../core/types.js';
 import { Updater } from '../../utils/updater.js';
-import { envManager } from '../../utils/environment.js';
 
 const args = process.argv.slice(2);
 const subCommand = args[0];
 
-if (subCommand === 'gui') {
-  console.log(chalk.cyan('\n  Starting GUI...\n'));
-  const prepared = await envManager.prepareGUI();
-  if (!prepared) {
-    console.log(chalk.red('  Failed to prepare GUI environment\n'));
-    process.exit(1);
-  }
-  spawn('npm', ['run', 'tauri', 'dev'], {
-    cwd: 'src/clients/gui',
-    shell: true,
-    stdio: 'inherit',
-  });
-  process.exit(0);
-}
-
 if (subCommand === 'web') {
   console.log(chalk.cyan('\n  Starting Web...\n'));
-  const prepared = await envManager.prepareWeb();
-  if (!prepared) {
-    console.log(chalk.red('  Failed to prepare Web environment\n'));
-    process.exit(1);
-  }
-  spawn('npm', ['run', 'dev'], {
+  spawn('npm', ['run', 'web'], {
     cwd: 'clients/web',
     shell: true,
     stdio: 'inherit',
@@ -55,12 +34,11 @@ ${chalk.cyan('  ╭────────────────────�
 ${chalk.cyan('  │')} ${chalk.white.bold('Usage:')}
 ${chalk.cyan('  │')}
 ${chalk.cyan('  │')}   ${chalk.white('crux')}             ${chalk.gray('Start CLI mode (default)')}
-${chalk.cyan('  │')}   ${chalk.white('crux gui')}         ${chalk.gray('Start GUI mode')}
 ${chalk.cyan('  │')}   ${chalk.white('crux web')}        ${chalk.gray('Start Web mode')}
 ${chalk.cyan('  │')}   ${chalk.white('crux -u')}          ${chalk.gray('Update to latest version')}
 ${chalk.cyan('  │')}   ${chalk.white('crux -h')}          ${chalk.gray('Show this help')}
 ${chalk.cyan('  ╰─────────────────────────────────')}
-`);
+  `);
   process.exit(0);
 }
 
@@ -100,9 +78,10 @@ class CLI {
     │   ${chalk.white(' ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝')}  │
     │                                                                     │
     │   ${chalk.gray('© 2024-2026')} ${chalk.white('CZLJ')} ${chalk.gray('. All rights reserved.')}                      │
-    │   ${chalk.gray('│ Powerful AI Agent for CLI, Web & Desktop')}                     │
+    │   ${chalk.gray('│')} ${chalk.white.bold(' Powerful AI Agent for CLI & Web')}                              │
     ╰─────────────────────────────────────────────────────────────────────╯
     `));
+    console.log(chalk.gray('   ') + chalk.green('●') + chalk.gray(' CLI Mode ') + chalk.blue('●') + chalk.gray(' Web Mode\n'));
     console.log(chalk.gray('   Type ') + chalk.white('/help') + chalk.gray(' for commands, ') + chalk.white('/exit') + chalk.gray(' to quit.\n'));
   }
 
@@ -295,12 +274,28 @@ class CLI {
     const userMessage: Message = { role: 'user', content: input };
     sessionManager.addMessage(session.id, userMessage);
 
-    const messages: Message[] = session.messages.map(m => ({
-      role: m.role,
-      content: m.content,
-      tool_call_id: m.tool_call_id,
-      tool_calls: m.tool_calls,
-    }));
+    const systemMessage: Message = { 
+      role: 'system', 
+      content: `You are Crux, an AI agent that can execute commands, read/write files, and search the web.
+You have access to the following tools:
+- shell: Execute shell commands
+- file: Read, write, list, create, delete files and directories
+- glob: Find files matching a glob pattern
+- grep: Search for text patterns in files
+- web_fetch: Fetch content from a URL
+
+Always provide clear explanations before taking actions. When you need to use tools, use them appropriately.` 
+    };
+
+    const messages: Message[] = [
+      systemMessage,
+      ...session.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        tool_call_id: m.tool_call_id,
+        tool_calls: m.tool_calls,
+      }))
+    ];
 
     const spinner = ora({ text: chalk.cyan('  Thinking...'), spinner: 'dots' }).start();
     let fullResponse = '';

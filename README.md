@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.5-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.6-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -23,7 +23,7 @@
 
 ## 📖 简介
 
-**Crux** 是一款强大的 AI Agent 客户端，支持 CLI（命令行）、GUI（桌面应用）和 Web（网页版）三种客户端形式。
+**Crux** 是一款强大的 AI Agent 客户端，支持 CLI（命令行）和 Web（网页版）两种客户端形式。
 
 通过 Crux，你可以：
 
@@ -77,8 +77,6 @@ npm install -g
 ```bash
 crux       # CLI 客户端
 
-crux-gui   # GUI 客户端（需要先运行 npm run install-gui）
-
 crux-web   # Web 客户端
 ```
 
@@ -105,9 +103,6 @@ OPENAI_MODEL=deepseek-chat
 # CLI 客户端
 crux
 
-# GUI 客户端
-crux-gui
-
 # Web 客户端
 crux-web
 ```
@@ -122,13 +117,11 @@ crux-web
 | `npm run build` | 编译 TypeScript 项目 |
 | `npm run cli` | 运行 CLI 客户端 |
 | `npm run dev` | 开发模式运行 |
-| `npm run install-gui` | 安装 GUI 客户端依赖 |
 | `npm run install-web` | 安装 Web 客户端依赖 |
 | `crux` | 启动 CLI 客户端（全局命令） |
-| `crux-gui` | 启动 GUI 客户端（全局命令） |
 | `crux-web` | 启动 Web 客户端（全局命令） |
 
-### CLI 客户端（推荐）
+### CLI 客户端
 
 命令行交互界面，无需额外依赖。
 
@@ -147,34 +140,6 @@ crux
 - Markdown 格式输出
 - 多轮工具调用支持
 - 会话管理
-
----
-
-### GUI 客户端
-
-桌面应用程序，基于 Tauri 框架。
-
-```bash
-# 全局命令（推荐）
-crux-gui
-
-# 或使用 npm
-npm run gui
-```
-
-**首次使用需安装依赖：**
-```bash
-npm run install-gui
-```
-
-**前置要求：**
-- 安装 [Rust](https://rustup.rs)
-- 安装 Node.js ≥18.0.0
-
-**功能特点：**
-- 图形化界面
-- 直观易用
-- 跨平台支持（Windows/macOS/Linux）
 
 ---
 
@@ -265,8 +230,7 @@ crux/
 │   │   ├── GrepTool.ts       # grep 工具
 │   │   └── WebFetchTool.ts   # 网页工具
 │   ├── clients/              # 客户端
-│   │   ├── cli/              # CLI 客户端
-│   │   └── gui/              # GUI 客户端（Tauri）
+│   │   └── cli/              # CLI 客户端
 │   ├── utils/                # 工具函数
 │   │   ├── environment.ts    # 环境检测
 │   │   └── updater.ts        # 升级检测
@@ -299,9 +263,6 @@ npm run dev
 
 # Web 开发模式
 npm run web
-
-# GUI 开发模式（需要 Rust）
-npm run gui
 ```
 
 ### 编译项目
@@ -370,11 +331,10 @@ node dist/clients/cli/index.js
 2. 确认 API Key 有足够余额
 3. 确认网络可以访问 API
 
-### Q3: GUI 客户端无法启动
+### Q3: Web 客户端无法启动
 
 **前置条件：**
-- 安装 Rust: https://rustup.rs
-- 安装 GUI 依赖: `npm run install-gui`
+- 安装 Web 依赖: `npm run install-web`
 
 ### Q4: 多轮工具调用失败
 
