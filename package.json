@@ -1,0 +1,47 @@
+{
+  "name": "crux",
+  "version": "1.0.0",
+  "description": "AI Agent with CLI, GUI, and Web clients - Developed by CZLJ",
+  "main": "dist/core/index.js",
+  "bin": {
+    "crux": "./dist/clients/cli/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "init": "node init.js",
+    "build": "tsc",
+    "start": "node dist/core/index.js",
+    "dev": "tsx src/core/index.ts",
+    "cli": "tsx src/clients/cli/index.ts",
+    "server": "tsx src/server.ts",
+    "gui": "cd src/clients/gui && npm run tauri dev",
+    "web": "cd clients/web && npm run dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "conf": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "eventsource": "^2.0.2",
+    "express": "^4.19.2",
+    "glob": "^10.4.5",
+    "inquirer": "^9.2.23",
+    "marked": "^17.0.4",
+    "minimatch": "^9.0.5",
+    "openai": "^4.77.0",
+    "ora": "^7.0.1"
+  },
+  "devDependencies": {
+    "@types/eventsource": "^1.1.15",
+    "@types/express": "^5.0.6",
+    "@types/glob": "^8.1.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/marked": "^5.0.2",
+    "@types/node": "^20.14.9",
+    "tsx": "^4.15.7",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
