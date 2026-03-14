@@ -208,11 +208,6 @@ async function main() {
   await runCommand('npm', ['install', '-g'], '全局安装');
 
   console.log('\n' + '='.repeat(40));
-  log('开始安装 GUI 依赖...\n');
-
-  await runCommand('npm', ['install'], '安装 GUI 依赖', 'src/clients/gui');
-
-  console.log('\n' + '='.repeat(40));
   log('开始安装 Web 依赖...\n');
 
   await runCommand('npm', ['install'], '安装 Web 依赖', 'clients/web');
@@ -221,6 +216,7 @@ async function main() {
   console.log('\n\x1b[32m初始化完成！\x1b[0m\n');
   console.log('运行以下命令启动:');
   console.log('  \x1b[36mcrux\x1b[0m');
+  console.log('  \x1b[36mcrux-web\x1b[0m');
   console.log('');
 }
 
