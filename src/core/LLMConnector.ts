@@ -3,15 +3,15 @@ import { APIConfig, Message, LLMResponse, ToolCall, ReasoningCallback } from './
 import { configManager } from './config.js';
 
 export class LLMConnector {
-  private client: OpenAI;
+  private client!: OpenAI;
   private config: APIConfig;
 
   constructor(config?: Partial<APIConfig>) {
-    this.config = configManager.get().api;
-    if (config) {
-      this.config = { ...this.config, ...config };
-    }
+    this.config = { ...configManager.get().api, ...config };
+    this.recreateClient();
+  }
 
+  private recreateClient() {
     this.client = new OpenAI({
       apiKey: this.config.apiKey,
       baseURL: this.config.baseURL,
@@ -190,6 +190,7 @@ export class LLMConnector {
 
   setApiKey(apiKey: string): void {
     this.config.apiKey = apiKey;
+    this.recreateClient();
   }
 
   setModel(model: string): void {
@@ -198,6 +199,7 @@ export class LLMConnector {
 
   setBaseURL(baseURL: string): void {
     this.config.baseURL = baseURL;
+    this.recreateClient();
   }
 
   setTemperature(temperature: number): void {
