@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { stdin as input, stdout as output } from 'node:process';
+import { stdin as input, stdout as output, chdir } from 'node:process';
+import { homedir } from 'os';
+import { join } from 'path';
 import readline from 'node:readline';
 
 const rl = readline.createInterface({ input, output });
@@ -25,6 +27,52 @@ function error(message) {
 
 function info(message) {
   console.log(`\x1b[33mℹ\x1b[0m ${message}`);
+}
+
+function shouldMoveToUserDir() {
+  const cwd = process.cwd();
+  const protectedPaths = [
+    'C:\\Windows',
+    'C:\\Program Files',
+    'C:\\Program Files (x86)',
+    '/usr',
+    '/opt',
+    '/System',
+  ];
+  return protectedPaths.some(p => cwd.startsWith(p));
+}
+
+function getUserDirCrux() {
+  return join(homedir(), 'Crux');
+}
+
+async function moveToUserDir() {
+  const userDir = getUserDirCrux();
+  const userHome = homedir();
+  
+  log('检测到系统保护目录，正在移动到用户目录...\n');
+  
+  if (!existsSync(userDir)) {
+    log('从 GitHub 克隆项目到用户目录...');
+    const result = spawnSync('git', ['clone', 'https://github.com/CZLJCX/Crux.git', userDir], {
+      shell: true,
+      stdio: 'inherit',
+    });
+    if (result.status !== 0) {
+      error('克隆失败');
+      process.exit(1);
+    }
+    success('克隆完成');
+  } else {
+    info('用户目录已存在 Crux 项目');
+    if (!existsSync(join(userDir, 'package.json'))) {
+      error('用户目录项目不完整，请手动删除后重试');
+      process.exit(1);
+    }
+  }
+  
+  chdir(userDir);
+  console.log(`\n已切换到: ${userDir}\n`);
 }
 
 async function checkNodeVersion() {
@@ -87,6 +135,10 @@ async function runCommand(command, args, description, cwd = null) {
 }
 
 async function main() {
+  if (shouldMoveToUserDir()) {
+    await moveToUserDir();
+  }
+
   console.log('\n\x1b[1;35mCrux 初始化向导\x1b[0m\n');
   console.log('='.repeat(40));
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/CZLJCX/Crux">
-    <img src="https://img.shields.io/badge/Version-1.1.1-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.1.2-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/CZLJCX/Crux">
     <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
@@ -47,24 +47,21 @@
 
 ### 安装步骤
 
-#### 1. 克隆项目
-
-```bash
-git clone https://github.com/CZLJCX/Crux.git
-cd Crux
-```
-
-#### 2. 初始化
+#### 1. 运行初始化
 
 ```bash
 npm run init
 # 或
+npx crux-init
+# 或
 node init.js
 ```
 
+> ℹ️ 如果当前目录是系统保护目录（如 `C:\Windows`），会自动克隆到用户目录 `~/Crux` 并切换过去。
+
 根据提示完成配置后，自动完成依赖安装、编译和全局安装。
 
-#### 3. 启动程序
+#### 2. 启动程序
 
 ```bash
 # CLI 客户端

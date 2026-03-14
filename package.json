@@ -1,6 +1,6 @@
 {
   "name": "crux",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "AI Agent with CLI, GUI, and Web clients - Developed by CZLJ",
   "main": "dist/core/index.js",
   "bin": {

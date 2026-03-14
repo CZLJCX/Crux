@@ -4,8 +4,23 @@ import { homedir } from 'os';
 import dotenv from 'dotenv';
 import { AppConfig, APIConfig } from './types.js';
 
-const envPath = join(process.cwd(), '.env');
-if (existsSync(envPath)) {
+function findEnvFile(): string | null {
+  const candidates = [
+    join(process.cwd(), '.env'),
+    join(homedir(), '.crux', '.env'),
+    join(dirname(require.main?.filename || ''), '../../.env').replace(/\\/g, '/').split('/').filter(Boolean).join('/'),
+  ];
+  
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      return p;
+    }
+  }
+  return null;
+}
+
+const envPath = findEnvFile();
+if (envPath) {
   dotenv.config({ path: envPath });
 }
 
