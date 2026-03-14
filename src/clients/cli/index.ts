@@ -3,16 +3,64 @@ import chalk from 'chalk';
 import ora from 'ora';
 import inquirer from 'inquirer';
 import { marked } from 'marked';
+import { spawn } from 'child_process';
 import { Agent, sessionManager, configManager } from '../../core/index.js';
 import { registerBuiltInTools } from '../../tools/index.js';
 import { Message, SessionSummary } from '../../core/types.js';
 import { Updater } from '../../utils/updater.js';
+import { envManager } from '../../utils/environment.js';
 
 const args = process.argv.slice(2);
+const subCommand = args[0];
+
+if (subCommand === 'gui') {
+  console.log(chalk.cyan('\n  Starting GUI...\n'));
+  const prepared = await envManager.prepareGUI();
+  if (!prepared) {
+    console.log(chalk.red('  Failed to prepare GUI environment\n'));
+    process.exit(1);
+  }
+  spawn('npm', ['run', 'tauri', 'dev'], {
+    cwd: 'src/clients/gui',
+    shell: true,
+    stdio: 'inherit',
+  });
+  process.exit(0);
+}
+
+if (subCommand === 'web') {
+  console.log(chalk.cyan('\n  Starting Web...\n'));
+  const prepared = await envManager.prepareWeb();
+  if (!prepared) {
+    console.log(chalk.red('  Failed to prepare Web environment\n'));
+    process.exit(1);
+  }
+  spawn('npm', ['run', 'dev'], {
+    cwd: 'clients/web',
+    shell: true,
+    stdio: 'inherit',
+  });
+  process.exit(0);
+}
 
 if (args.includes('-u') || args.includes('--update')) {
   const updater = new Updater();
   updater.update().catch(console.error);
+  process.exit(0);
+}
+
+if (subCommand === '-h' || subCommand === '--help' || subCommand === 'help') {
+  console.log(`
+${chalk.cyan('  ╭─────────────────────────────────')}
+${chalk.cyan('  │')} ${chalk.white.bold('Usage:')}
+${chalk.cyan('  │')}
+${chalk.cyan('  │')}   ${chalk.white('crux')}             ${chalk.gray('Start CLI mode (default)')}
+${chalk.cyan('  │')}   ${chalk.white('crux gui')}         ${chalk.gray('Start GUI mode')}
+${chalk.cyan('  │')}   ${chalk.white('crux web')}        ${chalk.gray('Start Web mode')}
+${chalk.cyan('  │')}   ${chalk.white('crux -u')}          ${chalk.gray('Update to latest version')}
+${chalk.cyan('  │')}   ${chalk.white('crux -h')}          ${chalk.gray('Show this help')}
+${chalk.cyan('  ╰─────────────────────────────────')}
+`);
   process.exit(0);
 }
 
