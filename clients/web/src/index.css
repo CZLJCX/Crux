@@ -250,8 +250,27 @@ body {
 }
 
 .message {
-  padding: 20px 48px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
   animation: fadeIn 0.3s ease;
+  border-radius: 12px;
+}
+
+.user-message {
+  background: #d4e5f5;
+  margin-left: auto;
+  margin-right: 0;
+  width: fit-content;
+  max-width: 85%;
+}
+
+.assistant-message {
+  background: white;
+  margin-right: auto;
+  margin-left: 0;
+  width: fit-content;
+  max-width: 85%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes fadeIn {
@@ -327,23 +346,20 @@ body {
 
 /* ========== 推理框 ========== */
 .reasoning-box {
-  background: #e8f0f7;
-  border-left: 3px solid #5b8dc4;
-  padding: 12px 16px;
+  padding: 8px 0;
   margin-bottom: 12px;
-  border-radius: 0 8px 8px 0;
 }
 
 .reasoning-label {
   font-size: 12px;
-  font-weight: 600;
-  color: #4a6a8a;
-  margin-bottom: 6px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-bottom: 4px;
 }
 
 .reasoning-content {
   font-size: 13px;
-  color: #64748b;
+  color: #9ca3af;
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -729,25 +745,28 @@ body {
 }
 
 .dark-theme .theme-toggle-floating:hover {
-  background: #333333;
-}
+      background: #333333;
+    }
 
-.dark-theme .assistant-message {
-  background: #202020;
-  border-color: #303030;
-}
+    .dark-theme .user-message {
+      background: #2a3a5a;
+    }
 
-.dark-theme .assistant-message + .user-message {
-  border-top-color: #303030;
-}
+    .dark-theme .assistant-message {
+      background: #2a2a2a;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
 
-.dark-theme .reasoning-box {
-  background: #1e2a3a;
-  border-left-color: #4a7ab5;
+    .dark-theme .reasoning-box {
+  padding: 8px 0;
 }
 
 .dark-theme .reasoning-label {
-  color: #5b8dc4;
+  color: #6b7280;
+}
+
+.dark-theme .reasoning-content {
+  color: #6b7280;
 }
 
 .dark-theme .input-box {
@@ -773,28 +792,6 @@ body {
 
 .dark-theme .save-btn:hover {
   background: #3a6aa5;
-}
-
-.dark-theme .assistant-message .message-avatar {
-  background: #5a7a8c;
-}
-
-.dark-theme .assistant-message {
-  background: #202020;
-  border-color: #303030;
-}
-
-.dark-theme .assistant-message + .user-message {
-  border-top-color: #303030;
-}
-
-.dark-theme .reasoning-box {
-  background: #1e2a35;
-  border-left-color: #5a7a8c;
-}
-
-.dark-theme .reasoning-label {
-  color: #7a9cb4;
 }
 
 .dark-theme .reasoning-content {

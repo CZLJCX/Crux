@@ -161,6 +161,17 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
         res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
       }
     }
+
+    // Generate session title from first user message
+    if (sessionId && messages.length > 0) {
+      const session = sessionManager.load(sessionId);
+      if (session && session.messages.length <= 2) {
+        const firstUserMessage = messages.find(m => m.role === 'user');
+        if (firstUserMessage && (session.name.startsWith('新对话') || session.name.startsWith('Session'))) {
+          generateSessionTitle(agent, sessionId, firstUserMessage.content).catch(console.error);
+        }
+      }
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.write(`data: ${JSON.stringify({ type: 'error', data: message })}\n\n`);
@@ -168,6 +179,29 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
 
   res.end();
 });
+
+async function generateSessionTitle(agent: Agent, sessionId: string, userMessage: string): Promise<void> {
+  try {
+    const titleMessages: Message[] = [
+      {
+        role: 'system',
+        content: 'Please summarize the following user message into a short title (3-8 Chinese characters or 2-5 English words). Only return the title, nothing else. Examples: "Python 数据分析", "React 组件优化", "Translation Help"'
+      },
+      {
+        role: 'user',
+        content: userMessage
+      }
+    ];
+    
+    const result = await agent.chat(titleMessages);
+    if (result.content) {
+      const title = result.content.trim().replace(/^["']|["']$/g, '');
+      sessionManager.rename(sessionId, title);
+    }
+  } catch (error) {
+    console.error('Failed to generate session title:', error);
+  }
+}
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
