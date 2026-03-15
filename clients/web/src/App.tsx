@@ -14,6 +14,8 @@ interface Message {
   reasoning?: string;
   files?: FileAttachment[];
   toolCalls?: ToolCallInfo[];
+  tool_call_id?: string;
+  tool_calls?: { id: string; function: { name: string; arguments: string } }[];
 }
 
 interface FileAttachment {
@@ -21,6 +23,33 @@ interface FileAttachment {
   type: string;
   content: string;
   size: number;
+}
+
+function ToolResult({ result }: { result: string }) {
+  const successMatch = result.match(/\[SUCCESS\]$/);
+  const errorMatch = result.match(/\[ERROR\]$/);
+  
+  let content = result;
+  let status: 'success' | 'error' | null = null;
+  
+  if (successMatch) {
+    content = result.replace(/\[SUCCESS\]$/, '').trim();
+    status = 'success';
+  } else if (errorMatch) {
+    content = result.replace(/\[ERROR\]$/, '').trim();
+    status = 'error';
+  }
+  
+  return (
+    <pre className="tool-result">
+      {content}
+      {status && (
+        <span className={`tool-status-tag ${status}`}>
+          {status === 'success' ? 'SUCCESS' : 'ERROR'}
+        </span>
+      )}
+    </pre>
+  );
 }
 
 const API_BASE = '/api';
@@ -46,6 +75,12 @@ function App() {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const autoResize = useCallback((textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
   }, []);
 
   useEffect(() => {
@@ -75,7 +110,32 @@ function App() {
       const res = await fetch(`${API_BASE}/sessions/${SESSION_ID}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages || []);
+        const rawMessages = data.messages || [];
+        
+        const toolResultsMap = new Map<string, string>();
+        rawMessages.forEach((msg: Message) => {
+          if (msg.role === 'tool' && msg.tool_call_id) {
+            toolResultsMap.set(msg.tool_call_id, msg.content);
+          }
+        });
+        
+        const convertedMessages: Message[] = rawMessages.map((msg: Message) => {
+          if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+            const toolCalls: ToolCallInfo[] = (msg.tool_calls as any[]).map(tc => {
+              const tcId = tc.id || tc.tool_call_id;
+              return {
+                name: tc.function?.name || tc.name || 'unknown',
+                args: tc.function?.arguments || tc.args || '{}',
+                result: toolResultsMap.get(tcId),
+                status: 'done' as const
+              };
+            });
+            return { ...msg, toolCalls };
+          }
+          return msg;
+        }).filter((msg: Message) => msg.role !== 'tool');
+        
+        setMessages(convertedMessages);
       } else {
         await fetch(`${API_BASE}/sessions`, {
           method: 'POST',
@@ -324,22 +384,22 @@ function App() {
                         <div className="reasoning-content">{msg.reasoning}</div>
                       </div>
                     )}
-                    {msg.toolCalls && msg.toolCalls.length > 0 && (
-                      <div className="tool-calls-box">
-                        <div className="tool-calls-label">🔧 工具调用</div>
-                        {msg.toolCalls.map((tc, j) => (
-                          <div key={j} className="tool-call-item">
-                            <div className="tool-call-header">
-                              <span className="tool-name">{tc.name}</span>
-                              <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
-                            </div>
-                            {tc.result && (
-                              <pre className="tool-result">{tc.result}</pre>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+{msg.toolCalls && msg.toolCalls.length > 0 && (
+                       <div className="tool-calls-box">
+                         <div className="tool-calls-label">🔧 工具调用</div>
+                         {msg.toolCalls.map((tc, j) => (
+                           <div key={j} className="tool-call-item">
+                             <div className="tool-call-header">
+                               <span className="tool-name">{tc.name}</span>
+                               <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
+                             </div>
+                             {tc.result && (
+                               <ToolResult result={tc.result} />
+                             )}
+                           </div>
+                         ))}
+                       </div>
+                     )}
                     <div className="message-text"><MarkdownRenderer content={msg.content} darkMode={darkMode} /></div>
                   </div>
                 </div>
@@ -354,22 +414,22 @@ function App() {
                         <div className="reasoning-content">{streamingReasoning}</div>
                       </div>
                     )}
-                    {streamingToolCalls.length > 0 && (
-                      <div className="tool-calls-box">
-                        <div className="tool-calls-label">🔧 工具调用</div>
-                        {streamingToolCalls.map((tc, j) => (
-                          <div key={j} className="tool-call-item">
-                            <div className="tool-call-header">
-                              <span className="tool-name">{tc.name}</span>
-                              <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
-                            </div>
-                            {tc.result && (
-                              <pre className="tool-result">{tc.result}</pre>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+{streamingToolCalls.length > 0 && (
+                       <div className="tool-calls-box">
+                         <div className="tool-calls-label">🔧 工具调用</div>
+                         {streamingToolCalls.map((tc, j) => (
+                           <div key={j} className="tool-call-item">
+                             <div className="tool-call-header">
+                               <span className="tool-name">{tc.name}</span>
+                               <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
+                             </div>
+                             {tc.result && (
+                               <ToolResult result={tc.result} />
+                             )}
+                           </div>
+                         ))}
+                       </div>
+                     )}
                     <div className="message-text streaming"><MarkdownRenderer content={streamingContent} darkMode={darkMode} /><span className="cursor">▋</span></div>
                   </div>
                 </div>
@@ -395,7 +455,10 @@ function App() {
                     ref={inputRef}
                     className="user-input"
                     value={input}
-                    onChange={e => setInput(e.target.value)}
+                    onChange={e => {
+                      setInput(e.target.value);
+                      autoResize(e.target);
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="给 Crux 发送消息..."
                     disabled={loading}
@@ -459,7 +522,10 @@ function App() {
                     ref={inputRef}
                     className="user-input large"
                     value={input}
-                    onChange={e => setInput(e.target.value)}
+                    onChange={e => {
+                      setInput(e.target.value);
+                      autoResize(e.target);
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="输入你的问题..."
                     disabled={loading}

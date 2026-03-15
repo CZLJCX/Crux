@@ -20,6 +20,43 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 const DEFAULT_SESSION_ID = 'default-session';
 
+function truncate(str: string, maxLen: number): string {
+  if (!str) return '';
+  const cleaned = str.trim();
+  return cleaned.length > maxLen ? cleaned.substring(0, maxLen) + '...' : cleaned;
+}
+
+function formatToolResult(result: string, maxLen = 500): string {
+  try {
+    const parsed = JSON.parse(result);
+    
+    if (parsed.stdout !== undefined) {
+      const output = parsed.stderr 
+        ? `${parsed.stdout}\n[STDERR] ${parsed.stderr}` 
+        : parsed.stdout;
+      const status = parsed.success ? '[SUCCESS]' : '[ERROR]';
+      return truncate(output, maxLen) + '\n' + status;
+    }
+    
+    if (parsed.error) {
+      return truncate(parsed.error, maxLen) + '\n[ERROR]';
+    }
+    
+    if (parsed.success !== undefined) {
+      const { success, ...data } = parsed;
+      const dataStr = Object.keys(data).length > 0 
+        ? JSON.stringify(data, null, 0) 
+        : '';
+      const status = success ? '[SUCCESS]' : '[ERROR]';
+      return truncate(dataStr, maxLen) + '\n' + status;
+    }
+    
+    return truncate(result, maxLen);
+  } catch {
+    return truncate(result, maxLen);
+  }
+}
+
 app.get('/api/config', (req: Request, res: Response) => {
   const config = configManager.get();
   res.json(config);
@@ -135,6 +172,7 @@ app.post('/api/chat/message', async (req: Request, res: Response) => {
 
     let fullContent = '';
     let fullReasoning = '';
+    let currentToolCalls: { id: string; name: string; args: string; result?: string }[] = [];
 
     try {
       for await (const chunk of agent.streamChatIter(compressedMessages)) {
@@ -145,30 +183,40 @@ app.post('/api/chat/message', async (req: Request, res: Response) => {
           fullReasoning += chunk.data;
           res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
         } else if (chunk.type === 'response_end') {
-          if (fullContent || fullReasoning) {
+          if (fullContent || fullReasoning || currentToolCalls.length > 0) {
+            const toolCallsForSave = currentToolCalls.map(tc => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: tc.args }
+            }));
             sessionManager.addMessage(sid, {
               role: 'assistant',
               content: fullContent,
               reasoning: fullReasoning,
+              tool_calls: toolCallsForSave.length > 0 ? toolCallsForSave : undefined,
             });
           }
           fullContent = '';
           fullReasoning = '';
+          currentToolCalls = [];
           res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
         } else if (chunk.type === 'tool_call') {
           res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
-        } else if (chunk.type === 'tool_result') {
-          res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
-          
           try {
             const tc = JSON.parse(chunk.data);
-            sessionManager.addMessage(sid, {
-              role: 'tool',
-              content: chunk.data,
-              tool_call_id: tc.id,
+            currentToolCalls.push({
+              id: tc.id,
+              name: tc.function?.name || 'unknown',
+              args: tc.function?.arguments || '{}'
             });
           } catch (parseError) {
-            console.error('Failed to parse tool_result:', parseError);
+            console.error('Failed to parse tool_call:', parseError);
+          }
+        } else if (chunk.type === 'tool_result') {
+          const formattedResult = formatToolResult(chunk.data);
+          res.write(`data: ${JSON.stringify({ type: 'tool_result', data: formattedResult })}\n\n`);
+          if (currentToolCalls.length > 0) {
+            currentToolCalls[currentToolCalls.length - 1].result = formattedResult;
           }
         } else if (chunk.type === 'done') {
           res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
