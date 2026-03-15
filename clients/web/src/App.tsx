@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MarkdownRenderer } from './components/MarkdownRenderer';
 
+interface ToolCallInfo {
+  name: string;
+  args: string;
+  result?: string;
+  status: 'pending' | 'running' | 'done' | 'error';
+}
+
 interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   reasoning?: string;
   files?: FileAttachment[];
+  toolCalls?: ToolCallInfo[];
 }
 
 interface FileAttachment {
@@ -30,6 +38,7 @@ function App() {
   const [temperature, setTemperature] = useState('0.7');
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCallInfo[]>([]);
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +152,7 @@ function App() {
     setLoading(true);
     setStreamingContent('');
     setStreamingReasoning('');
+    setStreamingToolCalls([]);
 
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
@@ -168,6 +178,7 @@ function App() {
 
       let finalContent = '';
       let finalReasoning = '';
+      let currentToolCalls: ToolCallInfo[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -187,19 +198,41 @@ function App() {
               } else if (data.type === 'reasoning') {
                 finalReasoning += data.data;
                 setStreamingReasoning(finalReasoning);
+              } else if (data.type === 'tool_call') {
+                try {
+                  const tc = JSON.parse(data.data);
+                  currentToolCalls.push({
+                    name: tc.function?.name || 'unknown',
+                    args: tc.function?.arguments || '{}',
+                    status: 'running'
+                  });
+                  setStreamingToolCalls([...currentToolCalls]);
+                } catch (e) {
+                  console.error('Parse tool_call error:', e);
+                }
+              } else if (data.type === 'tool_result') {
+                if (currentToolCalls.length > 0) {
+                  const lastTool = currentToolCalls[currentToolCalls.length - 1];
+                  lastTool.result = data.data;
+                  lastTool.status = 'done';
+                  setStreamingToolCalls([...currentToolCalls]);
+                }
               } else if (data.type === 'response_end' || data.type === 'done') {
-                if (finalContent || finalReasoning) {
+                if (finalContent || finalReasoning || currentToolCalls.length > 0) {
                   const assistantMessage: Message = { 
                     role: 'assistant', 
                     content: finalContent,
-                    reasoning: finalReasoning 
+                    reasoning: finalReasoning,
+                    toolCalls: currentToolCalls.length > 0 ? [...currentToolCalls] : undefined
                   };
                   setMessages(prev => [...prev, assistantMessage]);
                 }
                 finalContent = '';
                 finalReasoning = '';
+                currentToolCalls = [];
                 setStreamingContent('');
                 setStreamingReasoning('');
+                setStreamingToolCalls([]);
               } else if (data.type === 'error') {
                 setMessages(prev => [...prev, { role: 'assistant', content: `错误: ${data.data}` }]);
               }
@@ -224,7 +257,7 @@ function App() {
     }
   };
 
-  const hasMessages = messages.length > 0 || streamingContent || streamingReasoning;
+  const hasMessages = messages.length > 0 || streamingContent || streamingReasoning || streamingToolCalls.length > 0;
 
   return (
     <div className={`app ${darkMode ? 'dark-theme' : ''}`}>
@@ -291,18 +324,50 @@ function App() {
                         <div className="reasoning-content">{msg.reasoning}</div>
                       </div>
                     )}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="tool-calls-box">
+                        <div className="tool-calls-label">🔧 工具调用</div>
+                        {msg.toolCalls.map((tc, j) => (
+                          <div key={j} className="tool-call-item">
+                            <div className="tool-call-header">
+                              <span className="tool-name">{tc.name}</span>
+                              <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
+                            </div>
+                            {tc.result && (
+                              <pre className="tool-result">{tc.result}</pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="message-text"><MarkdownRenderer content={msg.content} darkMode={darkMode} /></div>
                   </div>
                 </div>
               ))}
               
-              {(streamingReasoning || streamingContent) && (
+              {(streamingReasoning || streamingContent || streamingToolCalls.length > 0) && (
                 <div className="message assistant-message">
                   <div className="message-content">
                     {streamingReasoning && (
                       <div className="reasoning-box">
                         <div className="reasoning-label">💭 思考过程</div>
                         <div className="reasoning-content">{streamingReasoning}</div>
+                      </div>
+                    )}
+                    {streamingToolCalls.length > 0 && (
+                      <div className="tool-calls-box">
+                        <div className="tool-calls-label">🔧 工具调用</div>
+                        {streamingToolCalls.map((tc, j) => (
+                          <div key={j} className="tool-call-item">
+                            <div className="tool-call-header">
+                              <span className="tool-name">{tc.name}</span>
+                              <span className={`tool-status ${tc.status}`}>{tc.status === 'done' ? '✓' : '⏳'}</span>
+                            </div>
+                            {tc.result && (
+                              <pre className="tool-result">{tc.result}</pre>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                     <div className="message-text streaming"><MarkdownRenderer content={streamingContent} darkMode={darkMode} /><span className="cursor">▋</span></div>

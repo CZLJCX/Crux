@@ -1289,3 +1289,103 @@ body {
 .message-text .code-block-wrapper {
   margin: 12px 0;
 }
+
+/* ========== 工具调用 ========== */
+.tool-calls-box {
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tool-calls-label {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tool-call-item {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tool-call-item:last-child {
+  border-bottom: none;
+}
+
+.tool-call-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f9fafb;
+}
+
+.tool-name {
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.tool-status {
+  font-size: 12px;
+}
+
+.tool-status.running {
+  color: #f59e0b;
+  animation: pulse 1s infinite;
+}
+
+.tool-status.done {
+  color: #10b981;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.tool-result {
+  margin: 0;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #1f2937;
+  color: #e5e7eb;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dark-theme .tool-calls-box {
+  border-color: #374151;
+}
+
+.dark-theme .tool-calls-label {
+  background: #1f2937;
+  border-bottom-color: #374151;
+  color: #9ca3af;
+}
+
+.dark-theme .tool-call-item {
+  border-bottom-color: #374151;
+}
+
+.dark-theme .tool-call-header {
+  background: #1f2937;
+}
+
+.dark-theme .tool-name {
+  color: #d1d5db;
+}
+
+.dark-theme .tool-result {
+  background: #111827;
+  color: #d1d5db;
+}
