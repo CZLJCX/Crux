@@ -19,6 +19,13 @@ export interface ToolResult {
   is_error?: boolean;
 }
 
+export interface FileAttachment {
+  name: string;
+  type: string;
+  content: string;
+  size: number;
+}
+
 export interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
@@ -26,6 +33,7 @@ export interface Message {
   tool_call_id?: string;
   name?: string;
   tool_calls?: ToolCall[];
+  files?: FileAttachment[];
 }
 
 export interface Session {

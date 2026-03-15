@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { MarkdownRenderer } from './components/MarkdownRenderer';
 
 interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';
@@ -14,20 +15,10 @@ interface FileAttachment {
   size: number;
 }
 
-interface Session {
-  id: string;
-  name: string;
-  created_at: number;
-  updated_at: number;
-  message_count: number;
-  preview: string;
-}
-
 const API_BASE = '/api';
+const SESSION_ID = 'default-session';
 
 function App() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +31,6 @@ function App() {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
-  const [sidebarCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -54,7 +44,7 @@ function App() {
   }, [messages, streamingContent, scrollToBottom]);
 
   useEffect(() => {
-    loadSessions();
+    loadSession();
     loadConfig();
   }, []);
 
@@ -71,59 +61,23 @@ function App() {
     }
   }
 
-  async function loadSessions() {
+  async function loadSession() {
     try {
-      const res = await fetch(`${API_BASE}/sessions`);
-      const sessionList = await res.json();
-      setSessions(sessionList);
-      if (sessionList.length > 0 && !currentSessionId) {
-        selectSession(sessionList[0].id);
+      const res = await fetch(`${API_BASE}/sessions/${SESSION_ID}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+      } else {
+        await fetch(`${API_BASE}/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: SESSION_ID, name: 'Crux Chat' }),
+        });
+        setMessages([]);
       }
-    } catch (e) {
-      console.error('Failed to load sessions:', e);
-    }
-  }
-
-  async function selectSession(id: string) {
-    setCurrentSessionId(id);
-    setStreamingContent('');
-    setStreamingReasoning('');
-    try {
-      const res = await fetch(`${API_BASE}/sessions/${id}`);
-      const data = await res.json();
-      setMessages(data.messages || []);
     } catch (e) {
       console.error('Failed to load session:', e);
       setMessages([]);
-    }
-  }
-
-  async function createSession() {
-    try {
-      const res = await fetch(`${API_BASE}/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `新对话 ${new Date().toLocaleString()}` }),
-      });
-      const session = await res.json();
-      await loadSessions();
-      selectSession(session.id);
-    } catch (e) {
-      console.error('Failed to create session:', e);
-    }
-  }
-
-  async function deleteSession(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    try {
-      await fetch(`${API_BASE}/sessions/${id}`, { method: 'DELETE' });
-      if (currentSessionId === id) {
-        setCurrentSessionId(null);
-        setMessages([]);
-      }
-      loadSessions();
-    } catch (e) {
-      console.error('Failed to delete session:', e);
     }
   }
 
@@ -172,14 +126,16 @@ function App() {
   }
 
   async function sendMessage() {
-    if ((!input.trim() && attachments.length === 0) || loading || !currentSessionId) return;
+    if ((!input.trim() && attachments.length === 0) || loading) return;
 
+    const userContent = input;
+    const userFiles = attachments.length > 0 ? [...attachments] : undefined;
+    
     const userMessage: Message = { 
       role: 'user', 
-      content: input,
-      files: attachments.length > 0 ? attachments : undefined
+      content: userContent,
+      files: userFiles
     };
-    const currentMessages = [...messages, userMessage];
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -188,16 +144,14 @@ function App() {
     setStreamingContent('');
     setStreamingReasoning('');
 
-    let finalContent = '';
-    let finalReasoning = '';
-
     try {
-      const res = await fetch(`${API_BASE}/chat/stream`, {
+      const res = await fetch(`${API_BASE}/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          messages: currentMessages,
-          sessionId: currentSessionId 
+          content: userContent,
+          files: userFiles,
+          sessionId: SESSION_ID 
         }),
       });
 
@@ -211,6 +165,9 @@ function App() {
       if (!reader) {
         throw new Error('No reader available');
       }
+
+      let finalContent = '';
+      let finalReasoning = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -230,7 +187,7 @@ function App() {
               } else if (data.type === 'reasoning') {
                 finalReasoning += data.data;
                 setStreamingReasoning(finalReasoning);
-              } else if (data.type === 'response_end') {
+              } else if (data.type === 'response_end' || data.type === 'done') {
                 if (finalContent || finalReasoning) {
                   const assistantMessage: Message = { 
                     role: 'assistant', 
@@ -241,17 +198,6 @@ function App() {
                 }
                 finalContent = '';
                 finalReasoning = '';
-                setStreamingContent('');
-                setStreamingReasoning('');
-              } else if (data.type === 'done') {
-                if (finalContent || finalReasoning) {
-                  const assistantMessage: Message = { 
-                    role: 'assistant', 
-                    content: finalContent,
-                    reasoning: finalReasoning 
-                  };
-                  setMessages(prev => [...prev, assistantMessage]);
-                }
                 setStreamingContent('');
                 setStreamingReasoning('');
               } else if (data.type === 'error') {
@@ -278,53 +224,40 @@ function App() {
     }
   };
 
-  const handleNewChat = async () => {
-    await createSession();
-    setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
   const hasMessages = messages.length > 0 || streamingContent || streamingReasoning;
 
   return (
     <div className={`app ${darkMode ? 'dark-theme' : ''}`}>
-      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className="sidebar">
         <div className="sidebar-header">
           <div className="app-title">
             <img src="https://cruxai.cn/icon/i.png" alt="Crux" className="app-icon" />
             <img src="https://cruxai.cn/icon/Chat.png" alt="Crux" className="app-title-text" />
           </div>
           <div className="app-subtitle">by CZLJ</div>
-          <button className="new-chat-btn" onClick={handleNewChat}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            新建对话
-          </button>
-        </div>
-
-        <div className="conversation-list">
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              className={`conversation-item ${session.id === currentSessionId ? 'active' : ''}`}
-              onClick={() => selectSession(session.id)}
-            >
-              <svg className="conv-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-              <span className="conversation-title">{session.name}</span>
-              <span className="delete-btn" onClick={(e) => deleteSession(session.id, e)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </span>
-            </div>
-          ))}
         </div>
 
         <div className="sidebar-footer">
+          <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)}>
+            {darkMode ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+            )}
+            {darkMode ? '浅色模式' : '深色模式'}
+          </button>
           <button className="settings-btn" onClick={() => setShowSettings(true)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3"></circle>
@@ -358,7 +291,7 @@ function App() {
                         <div className="reasoning-content">{msg.reasoning}</div>
                       </div>
                     )}
-                    <div className="message-text">{msg.content}</div>
+                    <div className="message-text"><MarkdownRenderer content={msg.content} darkMode={darkMode} /></div>
                   </div>
                 </div>
               ))}
@@ -372,7 +305,7 @@ function App() {
                         <div className="reasoning-content">{streamingReasoning}</div>
                       </div>
                     )}
-                    <div className="message-text streaming">{streamingContent}<span className="cursor">▋</span></div>
+                    <div className="message-text streaming"><MarkdownRenderer content={streamingContent} darkMode={darkMode} /><span className="cursor">▋</span></div>
                   </div>
                 </div>
               )}

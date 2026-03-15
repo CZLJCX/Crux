@@ -1,14 +1,14 @@
 import express, { Request, Response } from 'express';
-import { Agent, sessionManager, configManager } from '../src/core/index.js';
-import { registerBuiltInTools } from '../src/tools/index.js';
-import type { Message } from '../src/core/types.js';
+import { Agent, sessionManager, configManager, contextManager } from './core/index.js';
+import { registerBuiltInTools } from './tools/index.js';
+import type { Message } from './core/types.js';
 
 registerBuiltInTools();
 
 const app = express();
 app.use(express.json());
 
-const sessions = new Map<string, any>();
+const DEFAULT_SESSION_ID = 'default-session';
 
 app.get('/api/config', (req: Request, res: Response) => {
   const config = configManager.get();
@@ -38,8 +38,12 @@ app.get('/api/sessions', (req: Request, res: Response) => {
 });
 
 app.post('/api/sessions', (req: Request, res: Response) => {
-  const { name } = req.body;
-  const session = sessionManager.create(name);
+  const { name, id } = req.body;
+  const sessionId = id || name || DEFAULT_SESSION_ID;
+  let session = sessionManager.load(sessionId);
+  if (!session) {
+    session = sessionManager.create(name || 'Crux Chat');
+  }
   res.json({ id: session.id, name: session.name });
 });
 
@@ -61,6 +65,107 @@ app.delete('/api/sessions/:id', (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete session' });
   }
+});
+
+interface MessageRequest {
+  content: string;
+  files?: Array<{ name: string; type: string; content: string; size: number }>;
+  sessionId?: string;
+}
+
+app.post('/api/chat/message', async (req: Request, res: Response) => {
+  const { content, files, sessionId } = req.body as MessageRequest;
+  
+  if (!content && (!files || files.length === 0)) {
+    res.status(400).json({ error: 'Message content is required' });
+    return;
+  }
+
+  const config = configManager.get();
+  if (!config.api.apiKey) {
+    res.status(400).json({ error: 'API key not configured' });
+    return;
+  }
+
+  const sid = sessionId || DEFAULT_SESSION_ID;
+  let session = sessionManager.load(sid);
+  if (!session) {
+    session = sessionManager.create('Crux Chat');
+  }
+
+  const userMessage: Message = {
+    role: 'user',
+    content: content || '',
+    files: files,
+  };
+  sessionManager.addMessage(sid, userMessage);
+
+  session = sessionManager.load(sid);
+  if (!session) {
+    res.status(500).json({ error: 'Session not found after save' });
+    return;
+  }
+
+  const allMessages = session.messages;
+  const stats = contextManager.getStats(allMessages);
+  console.log(`Context stats: ${stats.messageCount} messages, ~${stats.totalTokens} tokens, ${stats.utilizationPercent}% utilization`);
+
+  const compressedMessages = contextManager.compressForLLM(allMessages);
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'close');
+  res.flushHeaders();
+
+  const agent = new Agent();
+  agent.setApiKey(config.api.apiKey);
+  agent.setModel(config.api.model);
+  agent.setBaseURL(config.api.baseURL);
+  agent.setTemperature(config.api.temperature);
+
+  let fullContent = '';
+  let fullReasoning = '';
+
+  try {
+    for await (const chunk of agent.streamChatIter(compressedMessages)) {
+      if (chunk.type === 'content') {
+        fullContent += chunk.data;
+        res.write(`data: ${JSON.stringify({ type: 'content', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'reasoning') {
+        fullReasoning += chunk.data;
+        res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'response_end') {
+        if (fullContent || fullReasoning) {
+          sessionManager.addMessage(sid, {
+            role: 'assistant',
+            content: fullContent,
+            reasoning: fullReasoning,
+          });
+        }
+        fullContent = '';
+        fullReasoning = '';
+        res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
+      } else if (chunk.type === 'tool_call') {
+        res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
+      } else if (chunk.type === 'tool_result') {
+        res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
+        
+        const tc = JSON.parse(chunk.data);
+        sessionManager.addMessage(sid, {
+          role: 'tool',
+          content: chunk.data,
+          tool_call_id: tc.id,
+        });
+      } else if (chunk.type === 'done') {
+        res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
+      }
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.write(`data: ${JSON.stringify({ type: 'error', data: message })}\n\n`);
+  }
+
+  res.end();
 });
 
 app.post('/api/chat', async (req: Request, res: Response) => {
@@ -161,17 +266,6 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
         res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
       }
     }
-
-    // Generate session title from first user message
-    if (sessionId && messages.length > 0) {
-      const session = sessionManager.load(sessionId);
-      const firstUserMessage = messages.find(m => m.role === 'user');
-      if (firstUserMessage && session && 
-          (session.name.startsWith('新对话') || session.name.startsWith('Session'))) {
-        // Don't wait for title generation
-        generateSessionTitle(agent, sessionId, firstUserMessage.content).catch(console.error);
-      }
-    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.write(`data: ${JSON.stringify({ type: 'error', data: message })}\n\n`);
@@ -179,29 +273,6 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
 
   res.end();
 });
-
-async function generateSessionTitle(agent: Agent, sessionId: string, userMessage: string): Promise<void> {
-  try {
-    const titleMessages: Message[] = [
-      {
-        role: 'system',
-        content: 'Please summarize the following user message into a short title (3-8 Chinese characters or 2-5 English words). Only return the title, nothing else. Examples: "Python 数据分析", "React 组件优化", "Translation Help"'
-      },
-      {
-        role: 'user',
-        content: userMessage
-      }
-    ];
-    
-    const result = await agent.chat(titleMessages);
-    if (result.content) {
-      const title = result.content.trim().replace(/^["']|["']$/g, '');
-      sessionManager.rename(sessionId, title);
-    }
-  } catch (error) {
-    console.error('Failed to generate session title:', error);
-  }
-}
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
