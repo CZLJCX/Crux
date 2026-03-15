@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { Agent, sessionManager, configManager, contextManager } from './core/index.js';
 import { registerBuiltInTools } from './tools/index.js';
 import type { Message } from './core/types.js';
@@ -7,6 +7,16 @@ registerBuiltInTools();
 
 const app = express();
 app.use(express.json());
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
+});
 
 const DEFAULT_SESSION_ID = 'default-session';
 
@@ -74,98 +84,109 @@ interface MessageRequest {
 }
 
 app.post('/api/chat/message', async (req: Request, res: Response) => {
-  const { content, files, sessionId } = req.body as MessageRequest;
-  
-  if (!content && (!files || files.length === 0)) {
-    res.status(400).json({ error: 'Message content is required' });
-    return;
-  }
-
-  const config = configManager.get();
-  if (!config.api.apiKey) {
-    res.status(400).json({ error: 'API key not configured' });
-    return;
-  }
-
-  const sid = sessionId || DEFAULT_SESSION_ID;
-  let session = sessionManager.load(sid);
-  if (!session) {
-    session = sessionManager.create('Crux Chat');
-  }
-
-  const userMessage: Message = {
-    role: 'user',
-    content: content || '',
-    files: files,
-  };
-  sessionManager.addMessage(sid, userMessage);
-
-  session = sessionManager.load(sid);
-  if (!session) {
-    res.status(500).json({ error: 'Session not found after save' });
-    return;
-  }
-
-  const allMessages = session.messages;
-  const stats = contextManager.getStats(allMessages);
-  console.log(`Context stats: ${stats.messageCount} messages, ~${stats.totalTokens} tokens, ${stats.utilizationPercent}% utilization`);
-
-  const compressedMessages = contextManager.compressForLLM(allMessages);
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'close');
-  res.flushHeaders();
-
-  const agent = new Agent();
-  agent.setApiKey(config.api.apiKey);
-  agent.setModel(config.api.model);
-  agent.setBaseURL(config.api.baseURL);
-  agent.setTemperature(config.api.temperature);
-
-  let fullContent = '';
-  let fullReasoning = '';
-
   try {
-    for await (const chunk of agent.streamChatIter(compressedMessages)) {
-      if (chunk.type === 'content') {
-        fullContent += chunk.data;
-        res.write(`data: ${JSON.stringify({ type: 'content', data: chunk.data })}\n\n`);
-      } else if (chunk.type === 'reasoning') {
-        fullReasoning += chunk.data;
-        res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
-      } else if (chunk.type === 'response_end') {
-        if (fullContent || fullReasoning) {
-          sessionManager.addMessage(sid, {
-            role: 'assistant',
-            content: fullContent,
-            reasoning: fullReasoning,
-          });
-        }
-        fullContent = '';
-        fullReasoning = '';
-        res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
-      } else if (chunk.type === 'tool_call') {
-        res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
-      } else if (chunk.type === 'tool_result') {
-        res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
-        
-        const tc = JSON.parse(chunk.data);
-        sessionManager.addMessage(sid, {
-          role: 'tool',
-          content: chunk.data,
-          tool_call_id: tc.id,
-        });
-      } else if (chunk.type === 'done') {
-        res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
-      }
+    const { content, files, sessionId } = req.body as MessageRequest;
+    
+    if (!content && (!files || files.length === 0)) {
+      res.status(400).json({ error: 'Message content is required' });
+      return;
     }
+
+    const config = configManager.get();
+    if (!config.api.apiKey) {
+      res.status(400).json({ error: 'API key not configured. Please set your API key in settings.' });
+      return;
+    }
+
+    const sid = sessionId || DEFAULT_SESSION_ID;
+    let session = sessionManager.load(sid);
+    if (!session) {
+      session = sessionManager.create('Crux Chat');
+    }
+
+    const userMessage: Message = {
+      role: 'user',
+      content: content || '',
+      files: files,
+    };
+    sessionManager.addMessage(sid, userMessage);
+
+    session = sessionManager.load(sid);
+    if (!session) {
+      res.status(500).json({ error: 'Session not found after save' });
+      return;
+    }
+
+    const allMessages = session.messages;
+    const stats = contextManager.getStats(allMessages);
+    console.log(`Context stats: ${stats.messageCount} messages, ~${stats.totalTokens} tokens, ${stats.utilizationPercent}% utilization`);
+
+    const compressedMessages = contextManager.compressForLLM(allMessages);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'close');
+    res.flushHeaders();
+
+    const agent = new Agent();
+    agent.setApiKey(config.api.apiKey);
+    agent.setModel(config.api.model);
+    agent.setBaseURL(config.api.baseURL);
+    agent.setTemperature(config.api.temperature);
+
+    let fullContent = '';
+    let fullReasoning = '';
+
+    try {
+      for await (const chunk of agent.streamChatIter(compressedMessages)) {
+        if (chunk.type === 'content') {
+          fullContent += chunk.data;
+          res.write(`data: ${JSON.stringify({ type: 'content', data: chunk.data })}\n\n`);
+        } else if (chunk.type === 'reasoning') {
+          fullReasoning += chunk.data;
+          res.write(`data: ${JSON.stringify({ type: 'reasoning', data: chunk.data })}\n\n`);
+        } else if (chunk.type === 'response_end') {
+          if (fullContent || fullReasoning) {
+            sessionManager.addMessage(sid, {
+              role: 'assistant',
+              content: fullContent,
+              reasoning: fullReasoning,
+            });
+          }
+          fullContent = '';
+          fullReasoning = '';
+          res.write(`data: ${JSON.stringify({ type: 'response_end', data: '' })}\n\n`);
+        } else if (chunk.type === 'tool_call') {
+          res.write(`data: ${JSON.stringify({ type: 'tool_call', data: chunk.data })}\n\n`);
+        } else if (chunk.type === 'tool_result') {
+          res.write(`data: ${JSON.stringify({ type: 'tool_result', data: chunk.data })}\n\n`);
+          
+          try {
+            const tc = JSON.parse(chunk.data);
+            sessionManager.addMessage(sid, {
+              role: 'tool',
+              content: chunk.data,
+              tool_call_id: tc.id,
+            });
+          } catch (parseError) {
+            console.error('Failed to parse tool_result:', parseError);
+          }
+        } else if (chunk.type === 'done') {
+          res.write(`data: ${JSON.stringify({ type: 'done', data: '' })}\n\n`);
+        }
+      }
+    } catch (streamError: unknown) {
+      const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error';
+      console.error('Stream error:', errorMessage);
+      res.write(`data: ${JSON.stringify({ type: 'error', data: errorMessage })}\n\n`);
+    }
+
+    res.end();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.write(`data: ${JSON.stringify({ type: 'error', data: message })}\n\n`);
+    console.error('Request error:', error);
+    res.status(500).json({ error: message });
   }
-
-  res.end();
 });
 
 app.post('/api/chat', async (req: Request, res: Response) => {
