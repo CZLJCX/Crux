@@ -49,20 +49,19 @@ app.get('/api/sessions', (req: Request, res: Response) => {
 
 app.post('/api/sessions', (req: Request, res: Response) => {
   const { name, id } = req.body;
-  const sessionId = id || name || DEFAULT_SESSION_ID;
+  const sessionId = id || DEFAULT_SESSION_ID;
   let session = sessionManager.load(sessionId);
   if (!session) {
-    session = sessionManager.create(name || 'Crux Chat');
+    session = sessionManager.create(name || 'Crux Chat', sessionId);
   }
   res.json({ id: session.id, name: session.name });
 });
 
 app.get('/api/sessions/:id', (req: Request, res: Response) => {
   const id = req.params.id as string;
-  const session = sessionManager.load(id);
+  let session = sessionManager.load(id);
   if (!session) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
+    session = sessionManager.create('Crux Chat', id);
   }
   res.json({ id: session.id, name: session.name, messages: session.messages });
 });
@@ -101,7 +100,7 @@ app.post('/api/chat/message', async (req: Request, res: Response) => {
     const sid = sessionId || DEFAULT_SESSION_ID;
     let session = sessionManager.load(sid);
     if (!session) {
-      session = sessionManager.create('Crux Chat');
+      session = sessionManager.create('Crux Chat', sid);
     }
 
     const userMessage: Message = {

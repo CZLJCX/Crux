@@ -26,10 +26,10 @@ export class SessionManager {
     return join(this.sessionDir, `${id}.json`);
   }
 
-  create(name?: string): Session {
+  create(name?: string, id?: string): Session {
     const now = Date.now();
     const session: Session = {
-      id: generateId(),
+      id: id || generateId(),
       name: name || `Session ${new Date().toLocaleString()}`,
       created_at: now,
       updated_at: now,
